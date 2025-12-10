@@ -15,6 +15,7 @@ const user_module_1 = require("./user/user.module");
 const auth_module_1 = require("./auth/auth.module");
 const masterlist_module_1 = require("./masterlist/masterlist.module");
 const grade_module_1 = require("./grade/grade.module");
+const employee_module_1 = require("./employee/employee.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -24,10 +25,10 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRoot({
                 type: 'postgres',
                 host: 'localhost',
-                port: 3306,
+                port: 5432,
                 username: 'postgres',
                 password: 'admin',
-                database: 'capstone-csucc',
+                database: 'csucc-grading',
                 autoLoadEntities: true,
                 synchronize: true,
             }),
@@ -35,6 +36,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             masterlist_module_1.MasterlistModule,
             grade_module_1.GradeModule,
+            employee_module_1.EmployeeModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -9,7 +9,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Employee } from '../user/user.entity';
-import { Grade } from 'src/grade/grade.entity'; 
+import { Grade } from 'src/grade/grade.entity';
 
 @Entity({ name: 'masterlist' })
 export class Masterlist {

@@ -1,9 +1,9 @@
-import { 
-  BadRequestException, 
-  Body, 
-  Controller, 
-  NotFoundException, 
-  Post, 
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  NotFoundException,
+  Post,
   Res,
   Get,
   Delete,
@@ -12,13 +12,13 @@ import {
   UseGuards,
   Req,
   UseInterceptors,
-  ClassSerializerInterceptor
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';   
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { RegisterDto } from './dtos/register.dto';
 import { UserService } from 'src/user/user.service';
-import { Response, Request } from 'express';   
+import { Response, Request } from 'express';
 import { LoginDto } from './dtos/login.dto';
 import { Role, Employee } from 'src/user/user.entity';
 import { AuthGuard } from './auth.guard';
@@ -30,13 +30,16 @@ import { RolesGuard } from './roles.guard';
 export class AuthController {
   constructor(
     private readonly userService: UserService,
-    private readonly jwtService: JwtService, 
+    private readonly jwtService: JwtService,
   ) {}
-  
+
   // ================= LOGIN & LOGOUT ==================
 
   @Post('auth/login')
-  async loginUsers(@Body() body: LoginDto, @Res({ passthrough: true }) response: Response) {
+  async loginUsers(
+    @Body() body: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const { email, password } = body;
     const user = await this.userService.findOne({ email });
 
@@ -46,12 +49,12 @@ export class AuthController {
     if (!passwordValid) throw new BadRequestException('Invalid credentials');
 
     const token = await this.jwtService.signAsync({
-      id: user.employee_id, 
+      id: user.employee_id,
       role: user.role,
     });
 
-    response.cookie('jwt', token, { 
-      httpOnly: true, 
+    response.cookie('jwt', token, {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
     });
@@ -79,7 +82,7 @@ export class AuthController {
       message: 'Login successful',
       access_token: token,
       role: user.role,
-      redirect: redirectUrl, 
+      redirect: redirectUrl,
     };
   }
 
@@ -101,7 +104,7 @@ export class AuthController {
     }
 
     const existingUser = await this.userService.findOne({ email: body.email });
-    if (existingUser) { 
+    if (existingUser) {
       throw new BadRequestException('Email already exists');
     }
 
@@ -123,10 +126,17 @@ export class AuthController {
     @Body('extname') extname: string,
     @Body('email') email: string,
     @Body('password') password: string,
-    @Body('role') role: Role,  
+    @Body('role') role: Role,
     @Param('id') userId: number,
   ) {
-    const updateData: any = { firstname, lastname, middlename, extname, email, role };
+    const updateData: any = {
+      firstname,
+      lastname,
+      middlename,
+      extname,
+      email,
+      role,
+    };
 
     if (password && password.trim() !== '') {
       const hashed = await bcrypt.hash(password, 12);

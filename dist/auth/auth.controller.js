@@ -86,7 +86,14 @@ let AuthController = class AuthController {
         return this.userService.save(Object.assign(Object.assign({}, body), { password: hashed }));
     }
     async updateInfo(firstname, lastname, middlename, extname, email, password, role, userId) {
-        const updateData = { firstname, lastname, middlename, extname, email, role };
+        const updateData = {
+            firstname,
+            lastname,
+            middlename,
+            extname,
+            email,
+            role,
+        };
         if (password && password.trim() !== '') {
             const hashed = await bcrypt.hash(password, 12);
             updateData.password = hashed;
