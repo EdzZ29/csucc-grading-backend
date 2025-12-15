@@ -17,27 +17,27 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcryptjs");
 const register_dto_1 = require("./dtos/register.dto");
-const user_service_1 = require("../user/user.service");
 const login_dto_1 = require("./dtos/login.dto");
-const user_entity_1 = require("../user/user.entity");
+const employee_service_1 = require("../employee/employee.service");
+const employee_entity_1 = require("../employee/employee.entity");
 const auth_guard_1 = require("./auth.guard");
 const roles_decorator_1 = require("./roles.decorator");
 const roles_guard_1 = require("./roles.guard");
 let AuthController = class AuthController {
-    constructor(userService, jwtService) {
-        this.userService = userService;
+    constructor(employeeService, jwtService) {
+        this.employeeService = employeeService;
         this.jwtService = jwtService;
     }
     async loginUsers(body, response) {
         const { email, password } = body;
-        const user = await this.userService.findOne({ email });
+        const user = await this.employeeService.findOne({ email });
         if (!user)
             throw new common_1.NotFoundException('User not found');
         const passwordValid = await bcrypt.compare(password, user.password);
         if (!passwordValid)
             throw new common_1.BadRequestException('Invalid credentials');
         const token = await this.jwtService.signAsync({
-            id: user.employee_id,
+            id: user.empid,
             role: user.role,
         });
         response.cookie('jwt', token, {
@@ -47,19 +47,19 @@ let AuthController = class AuthController {
         });
         let redirectUrl = '/';
         switch (user.role) {
-            case user_entity_1.Role.ADMIN:
+            case employee_entity_1.EmpRole.ADMIN:
                 redirectUrl = 'auth/admin-dashboard';
                 break;
-            case user_entity_1.Role.INSTRUCTOR:
+            case employee_entity_1.EmpRole.INSTRUCTOR:
                 redirectUrl = 'auth/instructor-dashboard';
                 break;
-            case user_entity_1.Role.DEAN:
+            case employee_entity_1.EmpRole.DEAN:
                 redirectUrl = 'auth/dean-dashboard';
                 break;
-            case user_entity_1.Role.CHANCELLOR:
+            case employee_entity_1.EmpRole.CHANCELLOR:
                 redirectUrl = 'auth/chancellor-dashboard';
                 break;
-            case user_entity_1.Role.GUIDANCE:
+            case employee_entity_1.EmpRole.GUIDANCE:
                 redirectUrl = 'auth/guidance-dashboard';
                 break;
         }
@@ -78,12 +78,12 @@ let AuthController = class AuthController {
         if (body.password !== body.password_confirm) {
             throw new common_1.BadRequestException('Passwords do not match!');
         }
-        const existingUser = await this.userService.findOne({ email: body.email });
+        const existingUser = await this.employeeService.findOne({ email: body.email });
         if (existingUser) {
             throw new common_1.BadRequestException('Email already exists');
         }
         const hashed = await bcrypt.hash(body.password, 12);
-        return this.userService.save(Object.assign(Object.assign({}, body), { password: hashed }));
+        return this.employeeService.save(Object.assign(Object.assign({}, body), { password: hashed }));
     }
     async updateInfo(firstname, lastname, middlename, extname, email, password, role, userId) {
         const updateData = {
@@ -98,29 +98,29 @@ let AuthController = class AuthController {
             const hashed = await bcrypt.hash(password, 12);
             updateData.password = hashed;
         }
-        await this.userService.update(userId, updateData);
-        return this.userService.findOne({ employee_id: userId });
+        await this.employeeService.update(userId, updateData);
+        return this.employeeService.findOne({ employee_id: userId });
     }
     async getAllUsers() {
-        return this.userService.findAll();
+        return this.employeeService.findAll();
     }
     async resetPassword(userId, password, password_confirm) {
-        const user = await this.userService.findOne({ employee_id: userId });
+        const user = await this.employeeService.findOne({ employee_id: userId });
         if (!user)
             throw new common_1.NotFoundException('User not found');
         if (password !== password_confirm) {
             throw new common_1.BadRequestException('Passwords do not match!');
         }
-        await this.userService.update(userId, {
+        await this.employeeService.update(userId, {
             password: await bcrypt.hash(password, 12),
         });
         return { message: 'Password reset successfully' };
     }
     async deleteUser(userId) {
-        const user = await this.userService.findOne({ employee_id: userId });
+        const user = await this.employeeService.findOne({ employee_id: userId });
         if (!user)
             throw new common_1.NotFoundException('User not found');
-        await this.userService.delete(userId);
+        await this.employeeService.delete(userId);
         return { message: 'User deleted successfully' };
     }
     async checkAuth(request) {
@@ -128,14 +128,14 @@ let AuthController = class AuthController {
         const { id, role } = await this.jwtService.verifyAsync(cookie);
         return {
             loggedIn: true,
-            user: await this.userService.findOne({ employee_id: id }),
+            user: await this.employeeService.findOne({ employee_id: id }),
             role,
         };
     }
     async getUser(request) {
         const cookie = request.cookies['jwt'];
         const { id } = await this.jwtService.verifyAsync(cookie);
-        return this.userService.findOne({ employee_id: id });
+        return this.employeeService.findOne({ empid: id });
     }
 };
 exports.AuthController = AuthController;
@@ -157,7 +157,7 @@ __decorate([
 ], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_entity_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
     (0, common_1.Post)('auth/admin/create-users/store'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -166,7 +166,7 @@ __decorate([
 ], AuthController.prototype, "createUser", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_entity_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
     (0, common_1.Put)('auth/admin/users/update-info/:id'),
     __param(0, (0, common_1.Body)('firstname')),
     __param(1, (0, common_1.Body)('lastname')),
@@ -182,7 +182,7 @@ __decorate([
 ], AuthController.prototype, "updateInfo", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_entity_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
     (0, common_1.Get)('auth/admin/users'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
@@ -190,7 +190,7 @@ __decorate([
 ], AuthController.prototype, "getAllUsers", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_entity_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
     (0, common_1.Put)('auth/admin/user/reset-password/:id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('password')),
@@ -201,7 +201,7 @@ __decorate([
 ], AuthController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_entity_1.Role.ADMIN),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
     (0, common_1.Delete)('auth/admin/delete-users/:id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -227,7 +227,7 @@ __decorate([
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)(),
     (0, common_1.UseInterceptors)(common_1.ClassSerializerInterceptor),
-    __metadata("design:paramtypes", [user_service_1.UserService,
+    __metadata("design:paramtypes", [employee_service_1.EmployeeService,
         jwt_1.JwtService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

@@ -1,4 +1,4 @@
-import { Role } from "../../user/user.entity";
+import { EmpRole } from 'src/employee/employee.entity';
 export declare class RegisterDto {
     firstname: string;
     lastname: string;
@@ -7,5 +7,5 @@ export declare class RegisterDto {
     email: string;
     password: string;
     password_confirm: string;
-    role: Role;
+    role: EmpRole;
 }

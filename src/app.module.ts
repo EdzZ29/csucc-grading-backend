@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppService } from './app.service';
-import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { MasterlistModule } from './masterlist/masterlist.module';
-import { GradeModule } from './grade/grade.module';
 import { EmployeeModule } from './employee/employee.module';
+import { GradeWeightModule } from './grade-weight/grade-weight.module';
+import { ClassActivityModule } from './class-activity/class-activity.module';
+import { RawScoreModule } from './raw-score/raw-score.module';
+import { FinalGradeModule } from './final-grade/final-grade.module';
 
 @Module({
   imports: [
@@ -20,11 +22,13 @@ import { EmployeeModule } from './employee/employee.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    UserModule,
     AuthModule,
     MasterlistModule,
-    GradeModule,
     EmployeeModule,
+    GradeWeightModule,
+    ClassActivityModule,
+    RawScoreModule,
+    FinalGradeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

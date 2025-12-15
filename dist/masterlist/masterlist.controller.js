@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const masterlist_service_1 = require("./masterlist.service");
 const auth_guard_1 = require("../auth/auth.guard");
 const roles_guard_1 = require("../auth/roles.guard");
+const import_masterlist_dto_1 = require("./dtos/import-masterlist.dto");
 let MasterlistController = class MasterlistController {
     constructor(masterlistService) {
         this.masterlistService = masterlistService;
@@ -29,9 +30,9 @@ let MasterlistController = class MasterlistController {
         const user = req.user;
         return this.masterlistService.findOneForUser(id, user);
     }
-    async importCsv(data) {
-        console.log('📥 Received CSV Payload:', JSON.stringify(data, null, 2));
-        return this.masterlistService.importCsv(data);
+    async importCsv(importDto) {
+        console.log('Processing CSV Import...');
+        return this.masterlistService.importCsv(importDto);
     }
     async findByYearAndSem(sy, sem, req) {
         const user = req.user;
@@ -68,7 +69,7 @@ __decorate([
     (0, common_1.Post)('import'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [import_masterlist_dto_1.ImportMasterlistDto]),
     __metadata("design:returntype", Promise)
 ], MasterlistController.prototype, "importCsv", null);
 __decorate([
@@ -86,7 +87,7 @@ __decorate([
     (0, common_1.Get)('filter/:sy/:sem/query'),
     __param(0, (0, common_1.Param)('sy')),
     __param(1, (0, common_1.Param)('sem')),
-    __param(2, (0, common_1.Query)('employee_id')),
+    __param(2, (0, common_1.Query)('empid')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, Number]),
     __metadata("design:returntype", Promise)

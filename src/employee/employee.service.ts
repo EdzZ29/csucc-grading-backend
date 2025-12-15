@@ -23,7 +23,7 @@ export class EmployeeService {
   }
 
   async findAll(): Promise<Employee[]> {
-    return this.employeeRepository.find({ order: { employee_id: 'ASC' } });
+    return this.employeeRepository.find({ order: { empid: 'ASC' } });
   }
 
   async delete(id: number): Promise<void> {

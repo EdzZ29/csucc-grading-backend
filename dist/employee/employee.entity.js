@@ -9,25 +9,31 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Employee = exports.Role = void 0;
+exports.Employee = exports.EmpRole = void 0;
 const typeorm_1 = require("typeorm");
-var Role;
-(function (Role) {
-    Role["ADMIN"] = "Admin";
-    Role["INSTRUCTOR"] = "Instructor";
-    Role["DEAN"] = "Dean";
-    Role["CHANCELLOR"] = "Chancellor";
-    Role["GUIDANCE"] = "Guidance";
-})(Role || (exports.Role = Role = {}));
+const masterlist_entity_1 = require("../masterlist/masterlist.entity");
+const grade_weight_entity_1 = require("../grade-weight/grade-weight.entity");
+var EmpRole;
+(function (EmpRole) {
+    EmpRole["ADMIN"] = "Admin";
+    EmpRole["INSTRUCTOR"] = "Instructor";
+    EmpRole["DEAN"] = "Dean";
+    EmpRole["CHANCELLOR"] = "Chancellor";
+    EmpRole["GUIDANCE"] = "Guidance";
+})(EmpRole || (exports.EmpRole = EmpRole = {}));
 let Employee = class Employee {
 };
 exports.Employee = Employee;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], Employee.prototype, "employee_id", void 0);
+], Employee.prototype, "empid", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: EmpRole,
+        default: EmpRole.INSTRUCTOR,
+    }),
     __metadata("design:type", String)
 ], Employee.prototype, "role", void 0);
 __decorate([
@@ -39,34 +45,38 @@ __decorate([
     __metadata("design:type", String)
 ], Employee.prototype, "firstname", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50, default: '' }),
     __metadata("design:type", String)
 ], Employee.prototype, "middlename", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 10, nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 5, default: '' }),
     __metadata("design:type", String)
 ], Employee.prototype, "extname", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ unique: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50, unique: true }),
     __metadata("design:type", String)
 ], Employee.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 100 }),
     __metadata("design:type", String)
 ], Employee.prototype, "password", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'boolean', default: true }),
     __metadata("design:type", Boolean)
-], Employee.prototype, "is_active", void 0);
+], Employee.prototype, "isactive", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({ type: 'timestamp' }),
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
 ], Employee.prototype, "created_at", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)({ type: 'timestamp' }),
-    __metadata("design:type", Date)
-], Employee.prototype, "updated_at", void 0);
+    (0, typeorm_1.OneToMany)(() => masterlist_entity_1.Masterlist, (masterlist) => masterlist.employee),
+    __metadata("design:type", Array)
+], Employee.prototype, "masterlists", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => grade_weight_entity_1.GradeWeight, (gw) => gw.employee),
+    __metadata("design:type", Array)
+], Employee.prototype, "gradeWeights", void 0);
 exports.Employee = Employee = __decorate([
-    (0, typeorm_1.Entity)({ name: 'employee' })
+    (0, typeorm_1.Entity)('employee')
 ], Employee);
 //# sourceMappingURL=employee.entity.js.map

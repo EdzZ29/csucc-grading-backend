@@ -31,7 +31,7 @@ let EmployeeService = class EmployeeService {
         return this.employeeRepository.update(id, options);
     }
     async findAll() {
-        return this.employeeRepository.find({ order: { employee_id: 'ASC' } });
+        return this.employeeRepository.find({ order: { empid: 'ASC' } });
     }
     async delete(id) {
         await this.employeeRepository.delete(id);

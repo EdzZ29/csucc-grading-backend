@@ -1,3 +1,5 @@
+/* eslint-disable prettier/prettier */
+// src/masterlist/masterlist.controller.ts
 import {
   Controller,
   Get,
@@ -11,9 +13,10 @@ import {
 import { MasterlistService } from './masterlist.service';
 import { Masterlist } from './masterlist.entity';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { Employee } from 'src/user/user.entity';
+import { Employee } from 'src/employee/employee.entity';
 import { Request } from 'express';
 import { RolesGuard } from '../auth/roles.guard';
+import { ImportMasterlistDto } from './dtos/import-masterlist.dto';
 
 @Controller('masterlist')
 export class MasterlistController {
@@ -28,17 +31,23 @@ export class MasterlistController {
 
   @UseGuards(AuthGuard)
   @Get(':id')
-  async findOne(@Param('id') id: number, @Req() req: Request): Promise<Masterlist> {
+  async findOne(
+    @Param('id') id: number,
+    @Req() req: Request,
+  ): Promise<Masterlist> {
     const user = req.user as Employee;
     return this.masterlistService.findOneForUser(id, user);
   }
 
+  // ✅ Updated Import Route using DTO
   @Post('import')
-  async importCsv(@Body() data: { headers: string[]; rows: string[][] }) {
-    console.log('📥 Received CSV Payload:', JSON.stringify(data, null, 2));
-    return this.masterlistService.importCsv(data);
+  async importCsv(@Body() importDto: ImportMasterlistDto) {
+    console.log('Processing CSV Import...');
+    return this.masterlistService.importCsv(importDto);
   }
 
+  // ✅ FIXED: This is the critical route for Grading Module
+  // It fetches classes filtered by SY/SEM but restricted to the logged-in Instructor
   @UseGuards(AuthGuard, RolesGuard)
   @Get('filter/:sy/:sem')
   async findByYearAndSem(
@@ -47,6 +56,7 @@ export class MasterlistController {
     @Req() req: Request,
   ): Promise<Masterlist[]> {
     const user = req.user as Employee;
+    // Ensure your Service has findByYearAndSem(sy, sem, user)
     return this.masterlistService.findByYearAndSem(sy, sem, user);
   }
 
@@ -55,7 +65,7 @@ export class MasterlistController {
   async findBySYSEMQuery(
     @Param('sy') sy: string,
     @Param('sem') sem: string,
-    @Query('employee_id') employeeId?: number,
+    @Query('empid') employeeId?: number,
   ): Promise<Masterlist[]> {
     if (employeeId) {
       return this.masterlistService.findBySYSemAndEmployee(
@@ -64,6 +74,7 @@ export class MasterlistController {
         Number(employeeId),
       );
     } else {
+      // Admin fallback or specific query use case
       return this.masterlistService.findBySYandSem(sy, sem);
     }
   }

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   BadRequestException,
   Body,
@@ -16,11 +17,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { RegisterDto } from './dtos/register.dto';
-import { UserService } from 'src/user/user.service';
 import { Response, Request } from 'express';
+
+// ✅ Updated Imports
+import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
-import { Role, Employee } from 'src/user/user.entity';
+import { EmployeeService } from 'src/employee/employee.service';
+import {  EmpRole, Employee } from 'src/employee/employee.entity';
 import { AuthGuard } from './auth.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
@@ -29,7 +32,7 @@ import { RolesGuard } from './roles.guard';
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
   constructor(
-    private readonly userService: UserService,
+    private readonly employeeService: EmployeeService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -41,7 +44,8 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const { email, password } = body;
-    const user = await this.userService.findOne({ email });
+    // ✅ Use employeeService
+    const user = await this.employeeService.findOne({ email });
 
     if (!user) throw new NotFoundException('User not found');
 
@@ -49,7 +53,7 @@ export class AuthController {
     if (!passwordValid) throw new BadRequestException('Invalid credentials');
 
     const token = await this.jwtService.signAsync({
-      id: user.employee_id,
+      id: user.empid, // ✅ Correct ID field
       role: user.role,
     });
 
@@ -61,19 +65,19 @@ export class AuthController {
 
     let redirectUrl = '/';
     switch (user.role) {
-      case Role.ADMIN:
+      case EmpRole.ADMIN:
         redirectUrl = 'auth/admin-dashboard';
         break;
-      case Role.INSTRUCTOR:
+      case EmpRole.INSTRUCTOR:
         redirectUrl = 'auth/instructor-dashboard';
         break;
-      case Role.DEAN:
+      case EmpRole.DEAN:
         redirectUrl = 'auth/dean-dashboard';
         break;
-      case Role.CHANCELLOR:
+      case EmpRole.CHANCELLOR:
         redirectUrl = 'auth/chancellor-dashboard';
         break;
-      case Role.GUIDANCE:
+      case EmpRole.GUIDANCE:
         redirectUrl = 'auth/guidance-dashboard';
         break;
     }
@@ -96,28 +100,28 @@ export class AuthController {
   // ================= ADMIN ONLY ROUTES ==================
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(EmpRole.ADMIN)
   @Post('auth/admin/create-users/store')
   async createUser(@Body() body: RegisterDto) {
     if (body.password !== body.password_confirm) {
       throw new BadRequestException('Passwords do not match!');
     }
 
-    const existingUser = await this.userService.findOne({ email: body.email });
+    const existingUser = await this.employeeService.findOne({ email: body.email });
     if (existingUser) {
       throw new BadRequestException('Email already exists');
     }
 
     const hashed = await bcrypt.hash(body.password, 12);
 
-    return this.userService.save({
+    return this.employeeService.save({
       ...body,
       password: hashed,
     });
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(EmpRole.ADMIN)
   @Put('auth/admin/users/update-info/:id')
   async updateInfo(
     @Body('firstname') firstname: string,
@@ -126,7 +130,7 @@ export class AuthController {
     @Body('extname') extname: string,
     @Body('email') email: string,
     @Body('password') password: string,
-    @Body('role') role: Role,
+    @Body('role') role: EmpRole,
     @Param('id') userId: number,
   ) {
     const updateData: any = {
@@ -143,33 +147,33 @@ export class AuthController {
       updateData.password = hashed;
     }
 
-    await this.userService.update(userId, updateData);
-    return this.userService.findOne({ employee_id: userId }); // 👈 fix id usage
+    await this.employeeService.update(userId, updateData);
+    return this.employeeService.findOne({ employee_id: userId });
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(EmpRole.ADMIN)
   @Get('auth/admin/users')
   async getAllUsers() {
-    return this.userService.findAll();
+    return this.employeeService.findAll();
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(EmpRole.ADMIN)
   @Put('auth/admin/user/reset-password/:id')
   async resetPassword(
     @Param('id') userId: number,
     @Body('password') password: string,
     @Body('password_confirm') password_confirm: string,
   ) {
-    const user = await this.userService.findOne({ employee_id: userId });
+    const user = await this.employeeService.findOne({ employee_id: userId });
     if (!user) throw new NotFoundException('User not found');
 
     if (password !== password_confirm) {
       throw new BadRequestException('Passwords do not match!');
     }
 
-    await this.userService.update(userId, {
+    await this.employeeService.update(userId, {
       password: await bcrypt.hash(password, 12),
     });
 
@@ -177,13 +181,13 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(EmpRole.ADMIN)
   @Delete('auth/admin/delete-users/:id')
   async deleteUser(@Param('id') userId: number) {
-    const user = await this.userService.findOne({ employee_id: userId });
+    const user = await this.employeeService.findOne({ employee_id: userId });
     if (!user) throw new NotFoundException('User not found');
 
-    await this.userService.delete(userId);
+    await this.employeeService.delete(userId);
     return { message: 'User deleted successfully' };
   }
 
@@ -195,7 +199,7 @@ export class AuthController {
 
     return {
       loggedIn: true,
-      user: await this.userService.findOne({ employee_id: id }),
+      user: await this.employeeService.findOne({ employee_id: id }),
       role,
     };
   }
@@ -208,6 +212,6 @@ export class AuthController {
     const cookie = request.cookies['jwt'];
     const { id } = await this.jwtService.verifyAsync(cookie);
 
-    return this.userService.findOne({ employee_id: id });
+    return this.employeeService.findOne({ empid: id });
   }
 }

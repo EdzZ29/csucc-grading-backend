@@ -11,75 +11,96 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Masterlist = void 0;
 const typeorm_1 = require("typeorm");
-const user_entity_1 = require("../user/user.entity");
-const grade_entity_1 = require("../grade/grade.entity");
+const employee_entity_1 = require("../employee/employee.entity");
 let Masterlist = class Masterlist {
 };
 exports.Masterlist = Masterlist;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ name: 'masterlist_id' }),
     __metadata("design:type", Number)
 ], Masterlist.prototype, "masterlist_id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.Employee, (employee) => employee.masterlists, {
-        onDelete: 'CASCADE',
-    }),
-    (0, typeorm_1.JoinColumn)({ name: 'employee_id' }),
-    __metadata("design:type", user_entity_1.Employee)
-], Masterlist.prototype, "employee", void 0);
+    (0, typeorm_1.Column)({ name: 'empid' }),
+    __metadata("design:type", Number)
+], Masterlist.prototype, "empid", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 50, default: '' }),
     __metadata("design:type", String)
-], Masterlist.prototype, "status", void 0);
+], Masterlist.prototype, "type", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({ name: 'sy', type: 'varchar', length: 20, nullable: true }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "sy", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({ name: 'sem', type: 'varchar', length: 20, nullable: true }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "sem", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({
+        name: 'subjcode',
+        type: 'varchar',
+        length: 50,
+        default: '',
+        nullable: true,
+    }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "subjcode", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({
+        name: 'section',
+        type: 'varchar',
+        length: 50,
+        default: '',
+        nullable: true,
+    }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "section", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({ name: 'studid', type: 'varchar', length: 50 }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "studid", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100 }),
+    (0, typeorm_1.Column)({ name: 'studlastname', type: 'varchar', length: 100 }),
     __metadata("design:type", String)
-], Masterlist.prototype, "stud_lastname", void 0);
+], Masterlist.prototype, "studlastname", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100 }),
+    (0, typeorm_1.Column)({ name: 'studfirstname', type: 'varchar', length: 100 }),
     __metadata("design:type", String)
-], Masterlist.prototype, "stud_firstname", void 0);
+], Masterlist.prototype, "studfirstname", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'studmiddlename', type: 'varchar', length: 100, default: '' }),
     __metadata("design:type", String)
-], Masterlist.prototype, "stud_middlename", void 0);
+], Masterlist.prototype, "studmiddlename", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 10, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'studextname', type: 'varchar', length: 20, default: '' }),
     __metadata("design:type", String)
-], Masterlist.prototype, "stud_extname", void 0);
+], Masterlist.prototype, "studextname", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({ type: 'timestamp' }),
+    (0, typeorm_1.Column)({ name: 'studmajor', type: 'varchar', length: 100, default: '' }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "studmajor", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'studlevel', type: 'integer' }),
+    __metadata("design:type", Number)
+], Masterlist.prototype, "studlevel", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'department', type: 'varchar', length: 100, default: '' }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "department", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'college', type: 'varchar', length: 100, default: '' }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "college", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
-], Masterlist.prototype, "created_at", void 0);
+], Masterlist.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)({ type: 'timestamp' }),
-    __metadata("design:type", Date)
-], Masterlist.prototype, "updated_at", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => grade_entity_1.Grade, (grade) => grade.masterlist),
-    __metadata("design:type", Array)
-], Masterlist.prototype, "grades", void 0);
+    (0, typeorm_1.ManyToOne)(() => employee_entity_1.Employee, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'empid' }),
+    __metadata("design:type", employee_entity_1.Employee)
+], Masterlist.prototype, "employee", void 0);
 exports.Masterlist = Masterlist = __decorate([
-    (0, typeorm_1.Entity)({ name: 'masterlist' })
+    (0, typeorm_1.Entity)('masterlist')
 ], Masterlist);
 //# sourceMappingURL=masterlist.entity.js.map

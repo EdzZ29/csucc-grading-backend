@@ -1,15 +1,16 @@
+/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Grade } from 'src/grade/grade.entity';
-import { Masterlist } from 'src/masterlist/masterlist.entity';
+import { Masterlist } from '../masterlist/masterlist.entity';
+// ✅ Import GradeWeight to link the relation
+import { GradeWeight } from '../grade-weight/grade-weight.entity';
 
-export enum Role {
+export enum EmpRole {
   ADMIN = 'Admin',
   INSTRUCTOR = 'Instructor',
   DEAN = 'Dean',
@@ -17,13 +18,17 @@ export enum Role {
   GUIDANCE = 'Guidance',
 }
 
-@Entity({ name: 'employee' })
+@Entity('employee')
 export class Employee {
   @PrimaryGeneratedColumn()
-  employee_id: number;
+  empid: number;
 
-  @Column({ type: 'varchar', length: 50 })
-  role: string;
+  @Column({
+    type: 'enum',
+    enum: EmpRole,
+    default: EmpRole.INSTRUCTOR,
+  })
+  role: EmpRole;
 
   @Column({ type: 'varchar', length: 100 })
   lastname: string;
@@ -31,24 +36,30 @@ export class Employee {
   @Column({ type: 'varchar', length: 100 })
   firstname: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 50, default: '' })
   middlename: string;
 
-  @Column({ type: 'varchar', length: 10, nullable: true })
+  @Column({ type: 'varchar', length: 5, default: '' })
   extname: string;
 
-  @Column({ unique: true })
+  // ✅ Correct: Unique is required for login lookups
+  @Column({ type: 'varchar', length: 50, unique: true })
   email: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 100 })
   password: string;
 
   @Column({ type: 'boolean', default: true })
-  is_active: boolean;
+  isactive: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
-  updated_at: Date;
+  // --- Relations ---
+
+  @OneToMany(() => Masterlist, (masterlist) => masterlist.employee)
+  masterlists: Masterlist[];
+
+@OneToMany(() => GradeWeight, (gw) => gw.employee)
+  gradeWeights: GradeWeight[];
 }

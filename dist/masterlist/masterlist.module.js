@@ -10,6 +10,7 @@ exports.MasterlistModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const jwt_1 = require("@nestjs/jwt");
+const employee_entity_1 = require("../employee/employee.entity");
 const masterlist_entity_1 = require("./masterlist.entity");
 const masterlist_service_1 = require("./masterlist.service");
 const masterlist_controller_1 = require("./masterlist.controller");
@@ -20,7 +21,7 @@ exports.MasterlistModule = MasterlistModule;
 exports.MasterlistModule = MasterlistModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([masterlist_entity_1.Masterlist]),
+            typeorm_1.TypeOrmModule.forFeature([masterlist_entity_1.Masterlist, employee_entity_1.Employee]),
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_SECRET || 'secret',
                 signOptions: { expiresIn: '1d' },

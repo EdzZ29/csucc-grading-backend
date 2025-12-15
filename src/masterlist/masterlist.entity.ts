@@ -1,63 +1,82 @@
+/* eslint-disable prettier/prettier */
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  OneToMany,
   CreateDateColumn,
-  UpdateDateColumn,
+  ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
-import { Employee } from '../user/user.entity';
-import { Grade } from 'src/grade/grade.entity';
+import { Employee } from '../employee/employee.entity'; // FK: EMP_ID
 
-@Entity({ name: 'masterlist' })
+@Entity('masterlist')
 export class Masterlist {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'masterlist_id' })
   masterlist_id: number;
 
-  @ManyToOne(() => Employee, (employee) => employee.masterlists, {
-    onDelete: 'CASCADE',
+  @Column({ name: 'empid' })
+  empid: number;
+
+  @Column({ type: 'varchar', length: 50, default: '' })
+  type: string;
+
+  @Column({ name: 'sy', type: 'varchar', length: 20, nullable: true })
+  sy: string; // school year
+
+  @Column({ name: 'sem', type: 'varchar', length: 20, nullable: true })
+  sem: string; // semester
+
+  @Column({
+    name: 'subjcode',
+    type: 'varchar',
+    length: 50,
+    default: '',
+    nullable: true,
   })
-  @JoinColumn({ name: 'employee_id' })
-  employee: Employee;
-
-  @Column({ type: 'varchar', length: 50 })
-  status: string;
-
-  @Column({ type: 'varchar', length: 50 })
-  sy: string;
-
-  @Column({ type: 'varchar', length: 50 })
-  sem: string;
-
-  @Column({ type: 'varchar', length: 50 })
   subjcode: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({
+    name: 'section',
+    type: 'varchar',
+    length: 50,
+    default: '',
+    nullable: true,
+  })
   section: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ name: 'studid', type: 'varchar', length: 50 })
   studid: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  stud_lastname: string;
+  @Column({ name: 'studlastname', type: 'varchar', length: 100 })
+  studlastname: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  stud_firstname: string;
+  @Column({ name: 'studfirstname', type: 'varchar', length: 100 })
+  studfirstname: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  stud_middlename: string;
+  @Column({ name: 'studmiddlename', type: 'varchar', length: 100, default: '' })
+  studmiddlename: string;
 
-  @Column({ type: 'varchar', length: 10, nullable: true })
-  stud_extname: string;
+  @Column({ name: 'studextname', type: 'varchar', length: 20, default: '' })
+  studextname: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
-  created_at: Date;
+  @Column({ name: 'studmajor', type: 'varchar', length: 100, default: '' })
+  studmajor: string;
 
-  @UpdateDateColumn({ type: 'timestamp' })
-  updated_at: Date;
+  @Column({ name: 'studlevel', type: 'integer' })
+  studlevel: number;
 
-  @OneToMany(() => Grade, (grade) => grade.masterlist)
-  grades: Grade[];
+  @Column({ name: 'department', type: 'varchar', length: 100, default: '' })
+  department: string;
+
+  @Column({ name: 'college', type: 'varchar', length: 100, default: '' })
+  college: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  // Relations
+  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'empid' })
+  employee: Employee;
 }

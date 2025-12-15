@@ -1,19 +1,21 @@
-import { Employee } from '../user/user.entity';
-import { Grade } from 'src/grade/grade.entity';
+import { Employee } from '../employee/employee.entity';
 export declare class Masterlist {
     masterlist_id: number;
-    employee: Employee;
-    status: string;
+    empid: number;
+    type: string;
     sy: string;
     sem: string;
     subjcode: string;
     section: string;
     studid: string;
-    stud_lastname: string;
-    stud_firstname: string;
-    stud_middlename: string;
-    stud_extname: string;
-    created_at: Date;
-    updated_at: Date;
-    grades: Grade[];
+    studlastname: string;
+    studfirstname: string;
+    studmiddlename: string;
+    studextname: string;
+    studmajor: string;
+    studlevel: number;
+    department: string;
+    college: string;
+    createdAt: Date;
+    employee: Employee;
 }

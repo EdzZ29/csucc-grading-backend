@@ -4,6 +4,7 @@ const typeorm_1 = require("typeorm");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 const employee_entity_1 = require("../employee/employee.entity");
+const masterlist_entity_1 = require("../masterlist/masterlist.entity");
 dotenv.config();
 const seedEmployees = async () => {
     const AppDataSource = new typeorm_1.DataSource({
@@ -13,7 +14,7 @@ const seedEmployees = async () => {
         username: process.env.DB_USERNAME || 'postgres',
         password: process.env.DB_PASSWORD || 'admin',
         database: process.env.DB_DATABASE || 'csucc-grading',
-        entities: [employee_entity_1.Employee],
+        entities: [employee_entity_1.Employee, masterlist_entity_1.Masterlist],
         synchronize: false,
     });
     try {
@@ -27,41 +28,41 @@ const seedEmployees = async () => {
                 firstname: 'Edz',
                 lastname: 'Ederio',
                 email: 'admin@csucc.edu.ph',
-                role: employee_entity_1.Role.ADMIN,
+                role: employee_entity_1.EmpRole.ADMIN,
                 password: hashedPassword,
-                is_active: true,
+                isactive: true,
             },
             {
                 firstname: 'Juan',
                 lastname: 'Dela Cruz',
                 email: 'instructor@csucc.edu.ph',
-                role: employee_entity_1.Role.INSTRUCTOR,
+                role: employee_entity_1.EmpRole.INSTRUCTOR,
                 password: hashedPassword,
-                is_active: true,
+                isactive: true,
             },
             {
                 firstname: 'Maria',
                 lastname: 'Clara',
                 email: 'dean@csucc.edu.ph',
-                role: employee_entity_1.Role.DEAN,
+                role: employee_entity_1.EmpRole.DEAN,
                 password: hashedPassword,
-                is_active: true,
+                isactive: true,
             },
             {
                 firstname: 'Andres',
                 lastname: 'Bonifacio',
                 email: 'chancellor@csucc.edu.ph',
-                role: employee_entity_1.Role.CHANCELLOR,
+                role: employee_entity_1.EmpRole.CHANCELLOR,
                 password: hashedPassword,
-                is_active: true,
+                isactive: true,
             },
             {
                 firstname: 'Jose',
                 lastname: 'Rizal',
                 email: 'guidance@csucc.edu.ph',
-                role: employee_entity_1.Role.GUIDANCE,
+                role: employee_entity_1.EmpRole.GUIDANCE,
                 password: hashedPassword,
-                is_active: true,
+                isactive: true,
             },
         ];
         for (const data of employeesToSeed) {
@@ -81,7 +82,9 @@ const seedEmployees = async () => {
         console.error('❌ Seeding failed:', error);
     }
     finally {
-        await AppDataSource.destroy();
+        if (AppDataSource.isInitialized) {
+            await AppDataSource.destroy();
+        }
     }
 };
 seedEmployees();
