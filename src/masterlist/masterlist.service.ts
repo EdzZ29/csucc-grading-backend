@@ -15,7 +15,10 @@ export class MasterlistService {
     private readonly employeeRepo: Repository<Employee>,
   ) {}
 
-  // ... [Keep findAllForUser / findOneForUser methods] ...
+  //  HELPER:  Admin Check (Handles 'Admin', 'ADMIN', 'admin')
+  private isAdmin(user: Employee): boolean {
+    return user.role && user.role.toUpperCase() === 'ADMIN';
+  }
 
   async findAllForUser(user: Employee): Promise<Masterlist[]> {
     if (user.role === 'Admin') {
@@ -25,6 +28,16 @@ export class MasterlistService {
       where: { employee: { empid: user.empid } },
       relations: ['employee'],
     });
+  }
+
+async getUniqueSubjectsCount(): Promise<number> {
+    // We fetch distinct Subject + Section pairs
+    // This ignores duplicate student entries and counts actual "Classes"
+    const result = await this.masterlistRepo
+      .createQueryBuilder('masterlist')
+      .select('COUNT(DISTINCT masterlist.subjcode || masterlist.section)', 'count')
+      .getRawOne();
+    return parseInt(result.count, 10) || 0;
   }
 
   async findOneForUser(id: number, user: Employee): Promise<Masterlist> {
@@ -39,7 +52,6 @@ export class MasterlistService {
     return record;
   }
 
-  // ✅ FIXED IMPORT (With Batching)
   async importCsv(data: ImportMasterlistDto) {
     const { headers, rows } = data;
     const successEntities: Masterlist[] = [];
@@ -90,7 +102,7 @@ export class MasterlistService {
 
         if (!instructor) {
           // Log explicitly to help debugging names
-          console.warn(`⚠️ Instructor Not Found: "${instFirst} ${instLast}" (Row ${i + 1})`);
+          console.warn(`Instructor Not Found: "${instFirst} ${instLast}" (Row ${i + 1})`);
           throw new Error(`Instructor not found in DB: ${instFirst} ${instLast}`);
         }
 
@@ -181,15 +193,32 @@ export class MasterlistService {
     };
   }
 
-  // ... [Keep your query methods] ...
-    async findByYearAndSem(sy: string, sem: string, user: Employee) {
+  async findByYearAndSem(sy: string, sem: string, user: Employee) {
     const query = this.masterlistRepo
       .createQueryBuilder('masterlist')
-      .leftJoinAndSelect('masterlist.employee', 'employee');
+      .leftJoinAndSelect('masterlist.employee', 'employee')
+      // Join relations needed for Grading Module calculations
+      .leftJoinAndSelect('masterlist.rawScores', 'rawScores')
+      .leftJoinAndSelect('rawScores.activity', 'activity')
+      .leftJoinAndSelect('masterlist.finalGrade', 'finalGrade');
 
-    if (sy && sy !== 'undefined' && sy !== 'null') query.andWhere('masterlist.sy = :sy', { sy });
-    if (sem && sem !== 'undefined' && sem !== 'null') query.andWhere('masterlist.sem = :sem', { sem });
-    if (user.role !== 'Admin') query.andWhere('employee.empid = :empid', { empid: user.empid });
+    // 1. Filter by School Year and Semester
+    if (sy && sy !== 'undefined' && sy !== 'null') {
+      query.andWhere('masterlist.sy = :sy', { sy });
+    }
+    if (sem && sem !== 'undefined' && sem !== 'null') {
+      query.andWhere('masterlist.sem = :sem', { sem });
+    }
+
+    // 2. Security Filter: Restrict Instructors
+    // Check if role exists, then normalize to Uppercase to handle 'Admin', 'ADMIN', 'admin'
+    const isAdmin = user.role && user.role.toUpperCase() === 'ADMIN';
+
+    if (!isAdmin) {
+
+      // Fix: Filter on the masterlist table column directly, NOT the joined employee table
+      query.andWhere('masterlist.empid = :empid', { empid: user.empid });
+    }
 
     return await query.getMany();
   }

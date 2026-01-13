@@ -14,12 +14,16 @@ const class_activity_controller_1 = require("./class-activity.controller");
 const class_activity_entity_1 = require("./class-activity.entity");
 const raw_score_entity_1 = require("../raw-score/raw-score.entity");
 const masterlist_entity_1 = require("../masterlist/masterlist.entity");
+const final_grade_entity_1 = require("../final-grade/final-grade.entity");
 let ClassActivityModule = class ClassActivityModule {
 };
 exports.ClassActivityModule = ClassActivityModule;
 exports.ClassActivityModule = ClassActivityModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([class_activity_entity_1.ClassActivity, raw_score_entity_1.RawScore, masterlist_entity_1.Masterlist])],
+        exports: [class_activity_service_1.ClassActivityService],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([class_activity_entity_1.ClassActivity, raw_score_entity_1.RawScore, masterlist_entity_1.Masterlist, final_grade_entity_1.FinalGrade]),
+        ],
         controllers: [class_activity_controller_1.ClassActivityController],
         providers: [class_activity_service_1.ClassActivityService],
     })

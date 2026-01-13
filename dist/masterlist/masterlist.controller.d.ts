@@ -5,6 +5,9 @@ import { ImportMasterlistDto } from './dtos/import-masterlist.dto';
 export declare class MasterlistController {
     private readonly masterlistService;
     constructor(masterlistService: MasterlistService);
+    getUniqueSubjectsCount(): Promise<{
+        count: number;
+    }>;
     findAll(req: Request): Promise<Masterlist[]>;
     findOne(id: number, req: Request): Promise<Masterlist>;
     importCsv(importDto: ImportMasterlistDto): Promise<{

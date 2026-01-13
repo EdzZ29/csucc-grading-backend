@@ -36,10 +36,12 @@ let AuthController = class AuthController {
         const passwordValid = await bcrypt.compare(password, user.password);
         if (!passwordValid)
             throw new common_1.BadRequestException('Invalid credentials');
-        const token = await this.jwtService.signAsync({
+        const payload = {
             id: user.empid,
+            empid: user.empid,
             role: user.role,
-        });
+        };
+        const token = await this.jwtService.signAsync(payload);
         response.cookie('jwt', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -53,14 +55,14 @@ let AuthController = class AuthController {
             case employee_entity_1.EmpRole.INSTRUCTOR:
                 redirectUrl = 'auth/instructor-dashboard';
                 break;
-            case employee_entity_1.EmpRole.DEAN:
-                redirectUrl = 'auth/dean-dashboard';
-                break;
             case employee_entity_1.EmpRole.CHANCELLOR:
                 redirectUrl = 'auth/chancellor-dashboard';
                 break;
             case employee_entity_1.EmpRole.GUIDANCE:
                 redirectUrl = 'auth/guidance-dashboard';
+                break;
+            case employee_entity_1.EmpRole.DEAN:
+                redirectUrl = 'auth/dean-dashboard';
                 break;
         }
         return {
@@ -103,6 +105,20 @@ let AuthController = class AuthController {
     }
     async getAllUsers() {
         return this.employeeService.findAll();
+    }
+    async updateOwnPassword(req, password, password_confirm) {
+        const userPayload = req['user'];
+        const userId = userPayload.empid || userPayload.id;
+        if (!userId)
+            throw new common_1.NotFoundException('User identity missing');
+        if (password !== password_confirm) {
+            throw new common_1.BadRequestException('Passwords do not match!');
+        }
+        const hashed = await bcrypt.hash(password, 12);
+        await this.employeeService.update(userId, {
+            password: hashed,
+        });
+        return { message: 'Password updated successfully' };
     }
     async resetPassword(userId, password, password_confirm) {
         const user = await this.employeeService.findOne({ employee_id: userId });
@@ -188,6 +204,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getAllUsers", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    (0, common_1.Put)('auth/user/update-password'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)('password')),
+    __param(2, (0, common_1.Body)('password_confirm')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updateOwnPassword", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),

@@ -20,6 +20,9 @@ export declare class AuthController {
     createUser(body: RegisterDto): Promise<any>;
     updateInfo(firstname: string, lastname: string, middlename: string, extname: string, email: string, password: string, role: EmpRole, userId: number): Promise<Employee>;
     getAllUsers(): Promise<Employee[]>;
+    updateOwnPassword(req: Request, password: string, password_confirm: string): Promise<{
+        message: string;
+    }>;
     resetPassword(userId: number, password: string, password_confirm: string): Promise<{
         message: string;
     }>;

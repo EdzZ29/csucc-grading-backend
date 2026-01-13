@@ -12,6 +12,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SaveGradebookDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
+class FinalGradePayloadDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], FinalGradePayloadDto.prototype, "studentId", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], FinalGradePayloadDto.prototype, "weightedScore", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], FinalGradePayloadDto.prototype, "numericalGrade", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], FinalGradePayloadDto.prototype, "remarks", void 0);
 class ScoreEntryDto {
 }
 __decorate([
@@ -19,6 +37,7 @@ __decorate([
     __metadata("design:type", String)
 ], ScoreEntryDto.prototype, "studentId", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], ScoreEntryDto.prototype, "score", void 0);
@@ -56,15 +75,31 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
+], SaveGradebookDto.prototype, "sy", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SaveGradebookDto.prototype, "sem", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
 ], SaveGradebookDto.prototype, "grading_type", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], SaveGradebookDto.prototype, "category", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => ActivityDto),
     __metadata("design:type", Array)
 ], SaveGradebookDto.prototype, "activities", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => FinalGradePayloadDto),
+    __metadata("design:type", Array)
+], SaveGradebookDto.prototype, "finalGrades", void 0);
 //# sourceMappingURL=save-gradebook.dto.js.map

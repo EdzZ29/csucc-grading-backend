@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   IsString,
   IsNumber,
@@ -7,23 +8,38 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+class FinalGradePayloadDto {
+  @IsString()
+  studentId: string;
+
+  @IsNumber()
+  weightedScore: number;
+
+  @IsNumber()
+  numericalGrade: number;
+
+  @IsString()
+  remarks: string;
+}
+
 class ScoreEntryDto {
   @IsString()
-  studentId: string; // This is the 'studid' (e.g., "2023-001") from frontend
+  studentId: string;
 
+  @IsOptional()
   @IsNumber()
   score: number;
 }
 
 class ActivityDto {
   @IsOptional()
-  activity_id: number; // If editing an existing column
+  activity_id: number;
 
   @IsString()
-  name: string; // "Quiz 1"
+  name: string;
 
   @IsNumber()
-  maxScore: number; // 50
+  maxScore: number;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -39,13 +55,26 @@ export class SaveGradebookDto {
   section: string;
 
   @IsString()
-  grading_type: string; // 'LECTURE' or 'LEC_LAB'
+  sy: string;
 
   @IsString()
-  category: string; // 'WRITTEN', 'PERFORMANCE', etc.
+  sem: string;
 
+  @IsString()
+  grading_type: string;
+
+  @IsString()
+  category: string;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ActivityDto)
   activities: ActivityDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FinalGradePayloadDto)
+  finalGrades: FinalGradePayloadDto[];
 }

@@ -18,18 +18,23 @@ let AuthGuard = class AuthGuard {
     }
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
-        const token = request.cookies['jwt'];
+        const token = this.extractTokenFromCookie(request);
         if (!token) {
             throw new common_1.UnauthorizedException();
         }
         try {
-            const payload = await this.jwtService.verifyAsync(token);
+            const payload = await this.jwtService.verifyAsync(token, {
+                secret: 'secret',
+            });
             request['user'] = payload;
         }
-        catch (err) {
-            throw new common_1.UnauthorizedException(err);
+        catch (_a) {
+            throw new common_1.UnauthorizedException();
         }
         return true;
+    }
+    extractTokenFromCookie(request) {
+        return request.cookies['jwt'];
     }
 };
 exports.AuthGuard = AuthGuard;

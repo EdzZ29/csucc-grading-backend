@@ -26,6 +26,9 @@ let ClassActivityController = class ClassActivityController {
     saveGradebook(dto) {
         return this.service.saveGradebook(dto);
     }
+    saveFinalGrades(dto) {
+        return this.service.saveFinalGradesOnly(dto);
+    }
     async delete(id) {
         return this.service.deleteActivity(id);
     }
@@ -47,6 +50,13 @@ __decorate([
     __metadata("design:paramtypes", [save_gradebook_dto_1.SaveGradebookDto]),
     __metadata("design:returntype", void 0)
 ], ClassActivityController.prototype, "saveGradebook", null);
+__decorate([
+    (0, common_1.Post)('save-final-grades'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [save_gradebook_dto_1.SaveGradebookDto]),
+    __metadata("design:returntype", void 0)
+], ClassActivityController.prototype, "saveFinalGrades", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),

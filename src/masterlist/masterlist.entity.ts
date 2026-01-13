@@ -7,8 +7,11 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { Employee } from '../employee/employee.entity'; // FK: EMP_ID
+import { FinalGrade } from 'src/final-grade/final-grade.entity';
+import { RawScore } from 'src/raw-score/raw-score.entity';
 
 @Entity('masterlist')
 export class Masterlist {
@@ -79,4 +82,10 @@ export class Masterlist {
   @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'empid' })
   employee: Employee;
+
+  @OneToOne(() => FinalGrade, (grade) => grade.student)
+  finalGrade: FinalGrade;
+
+  @OneToMany(() => RawScore, (score) => score.student)
+  rawScores: RawScore[];
 }

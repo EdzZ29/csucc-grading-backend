@@ -21,6 +21,7 @@ __decorate([
     __metadata("design:type", Number)
 ], RawScore.prototype, "raw_score_id", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], RawScore.prototype, "masterlist_id", void 0);
@@ -30,6 +31,7 @@ __decorate([
     __metadata("design:type", masterlist_entity_1.Masterlist)
 ], RawScore.prototype, "student", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], RawScore.prototype, "activity_id", void 0);
@@ -39,7 +41,7 @@ __decorate([
     __metadata("design:type", class_activity_entity_1.ClassActivity)
 ], RawScore.prototype, "activity", void 0);
 __decorate([
-    (0, typeorm_1.Column)('float'),
+    (0, typeorm_1.Column)('float', { nullable: true, default: null }),
     __metadata("design:type", Number)
 ], RawScore.prototype, "score", void 0);
 exports.RawScore = RawScore = __decorate([

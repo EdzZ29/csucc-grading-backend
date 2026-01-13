@@ -19,7 +19,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { Response, Request } from 'express';
 
-// ✅ Updated Imports
+
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
 import { EmployeeService } from 'src/employee/employee.service';
@@ -37,14 +37,12 @@ export class AuthController {
   ) {}
 
   // ================= LOGIN & LOGOUT ==================
-
-  @Post('auth/login')
+@Post('auth/login')
   async loginUsers(
     @Body() body: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
     const { email, password } = body;
-    // ✅ Use employeeService
     const user = await this.employeeService.findOne({ email });
 
     if (!user) throw new NotFoundException('User not found');
@@ -52,10 +50,15 @@ export class AuthController {
     const passwordValid = await bcrypt.compare(password, user.password);
     if (!passwordValid) throw new BadRequestException('Invalid credentials');
 
-    const token = await this.jwtService.signAsync({
-      id: user.empid, // ✅ Correct ID field
+    //  Add 'empid' to the payload
+    const payload = {
+      id: user.empid,      // For backward compatibility
+      empid: user.empid,
       role: user.role,
-    });
+    };
+
+    // Sign the token with the new payload
+    const token = await this.jwtService.signAsync(payload);
 
     response.cookie('jwt', token, {
       httpOnly: true,
@@ -65,21 +68,11 @@ export class AuthController {
 
     let redirectUrl = '/';
     switch (user.role) {
-      case EmpRole.ADMIN:
-        redirectUrl = 'auth/admin-dashboard';
-        break;
-      case EmpRole.INSTRUCTOR:
-        redirectUrl = 'auth/instructor-dashboard';
-        break;
-      case EmpRole.DEAN:
-        redirectUrl = 'auth/dean-dashboard';
-        break;
-      case EmpRole.CHANCELLOR:
-        redirectUrl = 'auth/chancellor-dashboard';
-        break;
-      case EmpRole.GUIDANCE:
-        redirectUrl = 'auth/guidance-dashboard';
-        break;
+      case EmpRole.ADMIN: redirectUrl = 'auth/admin-dashboard'; break;
+      case EmpRole.INSTRUCTOR: redirectUrl = 'auth/instructor-dashboard'; break;
+      case EmpRole.CHANCELLOR: redirectUrl = 'auth/chancellor-dashboard'; break;
+      case EmpRole.GUIDANCE: redirectUrl = 'auth/guidance-dashboard'; break;
+      case EmpRole.DEAN: redirectUrl = 'auth/dean-dashboard'; break;
     }
 
     return {
@@ -156,6 +149,36 @@ export class AuthController {
   @Get('auth/admin/users')
   async getAllUsers() {
     return this.employeeService.findAll();
+  }
+
+  // ================= USER SELF-SERVICE ==================
+
+  @UseGuards(AuthGuard) // Accessible by any logged-in user
+  @Put('auth/user/update-password') // New Route
+  async updateOwnPassword(
+    @Req() req: Request,
+    @Body('password') password: string,
+    @Body('password_confirm') password_confirm: string
+  ) {
+    // 1. Get the ID from the logged-in user's token (Secure)
+    // Note: Use the 'user' object attached by your AuthGuard
+    const userPayload = req['user'] as any;
+    const userId = userPayload.empid || userPayload.id;
+
+    if (!userId) throw new NotFoundException('User identity missing');
+
+    // 2. Validate Match
+    if (password !== password_confirm) {
+      throw new BadRequestException('Passwords do not match!');
+    }
+
+    // 3. Update Password
+    const hashed = await bcrypt.hash(password, 12);
+    await this.employeeService.update(userId, {
+      password: hashed,
+    });
+
+    return { message: 'Password updated successfully' };
   }
 
   @UseGuards(AuthGuard, RolesGuard)

@@ -9,6 +9,7 @@ import { GradeWeightModule } from './grade-weight/grade-weight.module';
 import { ClassActivityModule } from './class-activity/class-activity.module';
 import { RawScoreModule } from './raw-score/raw-score.module';
 import { FinalGradeModule } from './final-grade/final-grade.module';
+import { PredictionModule } from './prediction/prediction.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FinalGradeModule } from './final-grade/final-grade.module';
     ClassActivityModule,
     RawScoreModule,
     FinalGradeModule,
+    PredictionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

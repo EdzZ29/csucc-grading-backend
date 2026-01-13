@@ -25,7 +25,6 @@ export class GradeWeight {
   @UpdateDateColumn({ type: 'timestamp' })
   updated_at: Date;
 
-
   @ManyToOne(() => Employee, { nullable: true })
   @JoinColumn({ name: 'modified_by_empid', referencedColumnName: 'empid' })
   employee: Employee;

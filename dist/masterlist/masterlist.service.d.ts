@@ -6,7 +6,9 @@ export declare class MasterlistService {
     private readonly masterlistRepo;
     private readonly employeeRepo;
     constructor(masterlistRepo: Repository<Masterlist>, employeeRepo: Repository<Employee>);
+    private isAdmin;
     findAllForUser(user: Employee): Promise<Masterlist[]>;
+    getUniqueSubjectsCount(): Promise<number>;
     findOneForUser(id: number, user: Employee): Promise<Masterlist>;
     importCsv(data: ImportMasterlistDto): Promise<{
         success: boolean;

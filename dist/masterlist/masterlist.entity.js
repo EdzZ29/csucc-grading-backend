@@ -12,6 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Masterlist = void 0;
 const typeorm_1 = require("typeorm");
 const employee_entity_1 = require("../employee/employee.entity");
+const final_grade_entity_1 = require("../final-grade/final-grade.entity");
+const raw_score_entity_1 = require("../raw-score/raw-score.entity");
 let Masterlist = class Masterlist {
 };
 exports.Masterlist = Masterlist;
@@ -100,6 +102,14 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'empid' }),
     __metadata("design:type", employee_entity_1.Employee)
 ], Masterlist.prototype, "employee", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => final_grade_entity_1.FinalGrade, (grade) => grade.student),
+    __metadata("design:type", final_grade_entity_1.FinalGrade)
+], Masterlist.prototype, "finalGrade", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => raw_score_entity_1.RawScore, (score) => score.student),
+    __metadata("design:type", Array)
+], Masterlist.prototype, "rawScores", void 0);
 exports.Masterlist = Masterlist = __decorate([
     (0, typeorm_1.Entity)('masterlist')
 ], Masterlist);

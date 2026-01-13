@@ -23,6 +23,9 @@ let MasterlistService = class MasterlistService {
         this.masterlistRepo = masterlistRepo;
         this.employeeRepo = employeeRepo;
     }
+    isAdmin(user) {
+        return user.role && user.role.toUpperCase() === 'ADMIN';
+    }
     async findAllForUser(user) {
         if (user.role === 'Admin') {
             return this.masterlistRepo.find({ relations: ['employee'] });
@@ -31,6 +34,13 @@ let MasterlistService = class MasterlistService {
             where: { employee: { empid: user.empid } },
             relations: ['employee'],
         });
+    }
+    async getUniqueSubjectsCount() {
+        const result = await this.masterlistRepo
+            .createQueryBuilder('masterlist')
+            .select('COUNT(DISTINCT masterlist.subjcode || masterlist.section)', 'count')
+            .getRawOne();
+        return parseInt(result.count, 10) || 0;
     }
     async findOneForUser(id, user) {
         var _a;
@@ -85,7 +95,7 @@ let MasterlistService = class MasterlistService {
                     },
                 });
                 if (!instructor) {
-                    console.warn(`⚠️ Instructor Not Found: "${instFirst} ${instLast}" (Row ${i + 1})`);
+                    console.warn(`Instructor Not Found: "${instFirst} ${instLast}" (Row ${i + 1})`);
                     throw new Error(`Instructor not found in DB: ${instFirst} ${instLast}`);
                 }
                 const studid = getValue(row, 'studid');
@@ -161,13 +171,20 @@ let MasterlistService = class MasterlistService {
     async findByYearAndSem(sy, sem, user) {
         const query = this.masterlistRepo
             .createQueryBuilder('masterlist')
-            .leftJoinAndSelect('masterlist.employee', 'employee');
-        if (sy && sy !== 'undefined' && sy !== 'null')
+            .leftJoinAndSelect('masterlist.employee', 'employee')
+            .leftJoinAndSelect('masterlist.rawScores', 'rawScores')
+            .leftJoinAndSelect('rawScores.activity', 'activity')
+            .leftJoinAndSelect('masterlist.finalGrade', 'finalGrade');
+        if (sy && sy !== 'undefined' && sy !== 'null') {
             query.andWhere('masterlist.sy = :sy', { sy });
-        if (sem && sem !== 'undefined' && sem !== 'null')
+        }
+        if (sem && sem !== 'undefined' && sem !== 'null') {
             query.andWhere('masterlist.sem = :sem', { sem });
-        if (user.role !== 'Admin')
-            query.andWhere('employee.empid = :empid', { empid: user.empid });
+        }
+        const isAdmin = user.role && user.role.toUpperCase() === 'ADMIN';
+        if (!isAdmin) {
+            query.andWhere('masterlist.empid = :empid', { empid: user.empid });
+        }
         return await query.getMany();
     }
     async findBySYSemAndEmployee(sy, sem, empid) {

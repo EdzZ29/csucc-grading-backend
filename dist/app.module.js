@@ -18,6 +18,7 @@ const grade_weight_module_1 = require("./grade-weight/grade-weight.module");
 const class_activity_module_1 = require("./class-activity/class-activity.module");
 const raw_score_module_1 = require("./raw-score/raw-score.module");
 const final_grade_module_1 = require("./final-grade/final-grade.module");
+const prediction_module_1 = require("./prediction/prediction.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -41,6 +42,7 @@ exports.AppModule = AppModule = __decorate([
             class_activity_module_1.ClassActivityModule,
             raw_score_module_1.RawScoreModule,
             final_grade_module_1.FinalGradeModule,
+            prediction_module_1.PredictionModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

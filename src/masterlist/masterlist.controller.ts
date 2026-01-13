@@ -20,7 +20,14 @@ import { ImportMasterlistDto } from './dtos/import-masterlist.dto';
 
 @Controller('masterlist')
 export class MasterlistController {
-  constructor(private readonly masterlistService: MasterlistService) {}
+  constructor(private readonly masterlistService: MasterlistService) { }
+
+  @UseGuards(AuthGuard)
+  @Get('count/unique-subjects')
+  async getUniqueSubjectsCount() {
+    const count = await this.masterlistService.getUniqueSubjectsCount();
+    return { count };
+  }
 
   @UseGuards(AuthGuard)
   @Get('all')
@@ -46,8 +53,8 @@ export class MasterlistController {
     return this.masterlistService.importCsv(importDto);
   }
 
-  // ✅ FIXED: This is the critical route for Grading Module
-  // It fetches classes filtered by SY/SEM but restricted to the logged-in Instructor
+  //  This is the critical route for Grading Module
+  // It fetches classes filtered by SY/SEM but restricted to the logged-in employee
   @UseGuards(AuthGuard, RolesGuard)
   @Get('filter/:sy/:sem')
   async findByYearAndSem(

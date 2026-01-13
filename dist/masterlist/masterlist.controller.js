@@ -22,6 +22,10 @@ let MasterlistController = class MasterlistController {
     constructor(masterlistService) {
         this.masterlistService = masterlistService;
     }
+    async getUniqueSubjectsCount() {
+        const count = await this.masterlistService.getUniqueSubjectsCount();
+        return { count };
+    }
     async findAll(req) {
         const user = req.user;
         return this.masterlistService.findAllForUser(user);
@@ -48,6 +52,13 @@ let MasterlistController = class MasterlistController {
     }
 };
 exports.MasterlistController = MasterlistController;
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    (0, common_1.Get)('count/unique-subjects'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MasterlistController.prototype, "getUniqueSubjectsCount", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.Get)('all'),

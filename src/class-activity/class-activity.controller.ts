@@ -15,9 +15,16 @@ export class ClassActivityController {
     return this.service.getGradebook(subjcode, section, category);
   }
 
+  // Endpoint 1: Save Activity Scores (Inputs)
   @Post('save-gradebook')
   saveGradebook(@Body() dto: SaveGradebookDto) {
     return this.service.saveGradebook(dto);
+  }
+
+  // Endpoint 2: Save Final Grades (Computed) - [NEW]
+  @Post('save-final-grades')
+  saveFinalGrades(@Body() dto: SaveGradebookDto) {
+    return this.service.saveFinalGradesOnly(dto);
   }
 
   @Delete(':id')

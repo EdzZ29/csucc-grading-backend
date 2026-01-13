@@ -1,4 +1,6 @@
 import { Employee } from '../employee/employee.entity';
+import { FinalGrade } from 'src/final-grade/final-grade.entity';
+import { RawScore } from 'src/raw-score/raw-score.entity';
 export declare class Masterlist {
     masterlist_id: number;
     empid: number;
@@ -18,4 +20,6 @@ export declare class Masterlist {
     college: string;
     createdAt: Date;
     employee: Employee;
+    finalGrade: FinalGrade;
+    rawScores: RawScore[];
 }

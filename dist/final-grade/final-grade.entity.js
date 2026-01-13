@@ -20,7 +20,7 @@ __decorate([
     __metadata("design:type", Number)
 ], FinalGrade.prototype, "final_grade_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'masterlist_id' }),
+    (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], FinalGrade.prototype, "masterlist_id", void 0);
 __decorate([
@@ -29,11 +29,15 @@ __decorate([
     __metadata("design:type", masterlist_entity_1.Masterlist)
 ], FinalGrade.prototype, "student", void 0);
 __decorate([
-    (0, typeorm_1.Column)('float'),
+    (0, typeorm_1.Column)('float', { nullable: true, default: 0 }),
     __metadata("design:type", Number)
-], FinalGrade.prototype, "final_semestral_grade", void 0);
+], FinalGrade.prototype, "final_weighted_score", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)('float', { nullable: true, default: 0 }),
+    __metadata("design:type", Number)
+], FinalGrade.prototype, "final_numerical_grade", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], FinalGrade.prototype, "remarks", void 0);
 exports.FinalGrade = FinalGrade = __decorate([

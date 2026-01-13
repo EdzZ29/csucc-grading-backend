@@ -5,6 +5,7 @@ import { FinalGradeService } from './final-grade.service';
 import { FinalGradeController } from './final-grade.controller';
 
 @Module({
+  exports: [TypeOrmModule],
   imports: [TypeOrmModule.forFeature([FinalGrade])],
   controllers: [FinalGradeController],
   providers: [FinalGradeService],

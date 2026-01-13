@@ -8,6 +8,13 @@ export declare class ClassActivityController {
         success: boolean;
         message: string;
     }>;
+    saveFinalGrades(dto: SaveGradebookDto): Promise<{
+        success: boolean;
+        message?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+    }>;
     delete(id: number): Promise<{
         success: boolean;
         message: string;

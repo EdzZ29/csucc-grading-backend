@@ -17,6 +17,7 @@ let FinalGradeModule = class FinalGradeModule {
 exports.FinalGradeModule = FinalGradeModule;
 exports.FinalGradeModule = FinalGradeModule = __decorate([
     (0, common_1.Module)({
+        exports: [typeorm_1.TypeOrmModule],
         imports: [typeorm_1.TypeOrmModule.forFeature([final_grade_entity_1.FinalGrade])],
         controllers: [final_grade_controller_1.FinalGradeController],
         providers: [final_grade_service_1.FinalGradeService],

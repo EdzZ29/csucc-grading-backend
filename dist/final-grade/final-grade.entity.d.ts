@@ -3,6 +3,7 @@ export declare class FinalGrade {
     final_grade_id: number;
     masterlist_id: number;
     student: Masterlist;
-    final_semestral_grade: number;
+    final_weighted_score: number;
+    final_numerical_grade: number;
     remarks: string;
 }
