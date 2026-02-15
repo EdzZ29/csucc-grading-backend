@@ -57,7 +57,7 @@ export class PredictionService {
         midterm_score: parseFloat(row.midterm_score) || 0,
         is_passed:
           row.remarks && row.remarks.toUpperCase() === 'PASSED' ? 1 : 0,
-        risk_level: risk, // ✅ New Field for Multinomial Model
+        risk_level: risk, // Field for Multinomial Model
       };
     });
 
