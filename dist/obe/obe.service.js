@@ -101,6 +101,9 @@ let ObeService = class ObeService {
         const existingCoIds = existingCOs.map((co) => co.co_id);
         if (existingCoIds.length > 0)
             await this.tosRepo.delete({ co_id: (0, typeorm_2.In)(existingCoIds) });
+        if (existingCoIds.length > 0) {
+            await this.coRepo.manager.query(`UPDATE class_activity SET co_id = NULL WHERE co_id = ANY($1)`, [existingCoIds]);
+        }
         await this.coRepo.delete({ empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection });
         const createdOutcomes = await Promise.all(payload.outcomes.map((co) => this.coRepo.save(this.coRepo.create({
             co_code: co.co_code, description: co.description,
@@ -111,7 +114,18 @@ let ObeService = class ObeService {
             acc[co.co_code] = co.co_id;
             return acc;
         }, {});
-        const weightsToSave = payload.weights.map((w) => ({
+        const validWeights = payload.weights.filter((w) => {
+            if (!outcomeMap[w.co_code]) {
+                console.warn(`[OBE] Skipping orphan weight: co_code="${w.co_code}" has no matching outcome`);
+                return false;
+            }
+            return true;
+        });
+        if (validWeights.length === 0) {
+            console.log('[OBE] No valid weights to save after filtering');
+            return [];
+        }
+        const weightsToSave = validWeights.map((w) => ({
             empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection,
             co_id: outcomeMap[w.co_code], type_id: w.type_id,
             weight_percentage: w.weight_percentage,

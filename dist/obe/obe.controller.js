@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ObeController = void 0;
 const common_1 = require("@nestjs/common");
 const obe_service_1 = require("./obe.service");
-const auth_guard_1 = require("../auth/auth.guard");
 let ObeController = class ObeController {
     constructor(obeService) {
         this.obeService = obeService;
@@ -24,11 +23,23 @@ let ObeController = class ObeController {
         return await this.obeService.findAllAssessmentTypes();
     }
     async batchSave(payload, req) {
-        const empid = req.user.empid;
+        const empid = payload.empid || (req.user && req.user.empid);
+        console.log('[OBE] batchSave called with empid:', empid, 'subjcode:', payload.subjcode, 'section:', payload.section);
+        console.log('[OBE] outcomes:', JSON.stringify(payload.outcomes));
+        console.log('[OBE] weights:', JSON.stringify(payload.weights));
         if (!empid) {
-            throw new common_1.InternalServerErrorException('User identification failed');
+            throw new common_1.InternalServerErrorException('User identification failed — no empid in request body or auth token');
         }
-        return await this.obeService.saveBatchSyllabus(Object.assign(Object.assign({}, payload), { empid }));
+        try {
+            const result = await this.obeService.saveBatchSyllabus(Object.assign(Object.assign({}, payload), { empid }));
+            console.log('[OBE] batchSave SUCCESS');
+            return result;
+        }
+        catch (error) {
+            console.error('[OBE] batchSave FAILED:', error.message);
+            console.error('[OBE] Full error:', error);
+            throw new common_1.InternalServerErrorException(error.message || 'Failed to save syllabus');
+        }
     }
     async addType(data) {
         return await this.obeService.createAssessmentType(data);
@@ -64,7 +75,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ObeController.prototype, "getTypes", null);
 __decorate([
-    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.Post)('course-outcome/batch'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Req)()),

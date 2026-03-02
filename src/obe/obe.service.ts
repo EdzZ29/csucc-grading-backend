@@ -113,6 +113,16 @@ export class ObeService {
     const existingCoIds = existingCOs.map((co) => co.co_id);
 
     if (existingCoIds.length > 0) await this.tosRepo.delete({ co_id: In(existingCoIds) });
+
+    // Nullify co_id on class_activity rows that reference these COs
+    // so the FK constraint doesn't block the delete
+    if (existingCoIds.length > 0) {
+      await this.coRepo.manager.query(
+        `UPDATE class_activity SET co_id = NULL WHERE co_id = ANY($1)`,
+        [existingCoIds],
+      );
+    }
+
     await this.coRepo.delete({ empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection });
 
     const createdOutcomes = await Promise.all(
@@ -130,7 +140,22 @@ export class ObeService {
       return acc;
     }, {} as Record<string, number>);
 
-    const weightsToSave = payload.weights.map((w) => ({
+    // Filter out weights whose co_code doesn't match any created outcome
+    // This happens when a teacher deletes a CO but forgets to remove its weight row
+    const validWeights = payload.weights.filter((w) => {
+      if (!outcomeMap[w.co_code]) {
+        console.warn(`[OBE] Skipping orphan weight: co_code="${w.co_code}" has no matching outcome`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validWeights.length === 0) {
+      console.log('[OBE] No valid weights to save after filtering');
+      return [];
+    }
+
+    const weightsToSave = validWeights.map((w) => ({
       empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection,
       co_id: outcomeMap[w.co_code], type_id: w.type_id,
       weight_percentage: w.weight_percentage,

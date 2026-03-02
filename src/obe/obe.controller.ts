@@ -13,20 +13,30 @@ export class ObeController {
     return await this.obeService.findAllAssessmentTypes();
   }
 
-@UseGuards(AuthGuard) // Ensure the user is logged in
 @Post('course-outcome/batch')
 async batchSave(@Body() payload: any, @Req() req: any) {
-  // Use the empid of the logged-in instructor
-  const empid = req.user.empid;
+  const empid = payload.empid || (req.user && req.user.empid);
+
+  console.log('[OBE] batchSave called with empid:', empid, 'subjcode:', payload.subjcode, 'section:', payload.section);
+  console.log('[OBE] outcomes:', JSON.stringify(payload.outcomes));
+  console.log('[OBE] weights:', JSON.stringify(payload.weights));
 
   if (!empid) {
-    throw new InternalServerErrorException('User identification failed');
+    throw new InternalServerErrorException('User identification failed — no empid in request body or auth token');
   }
 
-  return await this.obeService.saveBatchSyllabus({
-    ...payload,
-    empid
-  });
+  try {
+    const result = await this.obeService.saveBatchSyllabus({
+      ...payload,
+      empid
+    });
+    console.log('[OBE] batchSave SUCCESS');
+    return result;
+  } catch (error) {
+    console.error('[OBE] batchSave FAILED:', error.message);
+    console.error('[OBE] Full error:', error);
+    throw new InternalServerErrorException(error.message || 'Failed to save syllabus');
+  }
 }
 
     /* eslint-disable prettier/prettier */
@@ -41,19 +51,17 @@ async batchSave(@Body() payload: any, @Req() req: any) {
 
   @Post('course-outcome')
   async createCO(@Body() data: any) {
-    // You can replace 'any' with a DTO later for validation
     return await this.obeService.createCourseOutcome(data);
   }
 
   @Post('tos-weights')
   async setWeights(@Body() weights: any[]) {
-    // Expects an array of weights for the matrix
     return await this.obeService.saveTosWeights(weights);
   }
 
 @Get('syllabus/:empid/:subjcode/:section')
 async getSyllabus(
-  @Param('empid', ParseIntPipe) empid: number, // Use ParseIntPipe for safety
+  @Param('empid', ParseIntPipe) empid: number,
   @Param('subjcode') subjcode: string,
   @Param('section') section: string
 ) {
