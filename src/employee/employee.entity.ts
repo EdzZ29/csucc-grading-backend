@@ -7,8 +7,8 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Masterlist } from '../masterlist/masterlist.entity';
-// ✅ Import GradeWeight to link the relation
-import { GradeWeight } from '../grade-weight/grade-weight.entity';
+import { CourseOutcome } from '../obe/course-outcome.entity';
+import { TosWeight } from '../obe/tos-weight.entity';
 
 export enum EmpRole {
   ADMIN = 'Admin',
@@ -42,7 +42,6 @@ export class Employee {
   @Column({ type: 'varchar', length: 5, default: '' })
   extname: string;
 
-  // ✅ Correct: Unique is required for login lookups
   @Column({ type: 'varchar', length: 50, unique: true })
   email: string;
 
@@ -60,6 +59,9 @@ export class Employee {
   @OneToMany(() => Masterlist, (masterlist) => masterlist.employee)
   masterlists: Masterlist[];
 
-@OneToMany(() => GradeWeight, (gw) => gw.employee)
-  gradeWeights: GradeWeight[];
+  @OneToMany(() => CourseOutcome, (co) => co.employee)
+  courseOutcomes: CourseOutcome[];
+
+  @OneToMany(() => TosWeight, (tw) => tw.employee)
+  tosWeights: TosWeight[];
 }

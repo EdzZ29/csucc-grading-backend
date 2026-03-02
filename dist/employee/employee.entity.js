@@ -12,7 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Employee = exports.EmpRole = void 0;
 const typeorm_1 = require("typeorm");
 const masterlist_entity_1 = require("../masterlist/masterlist.entity");
-const grade_weight_entity_1 = require("../grade-weight/grade-weight.entity");
+const course_outcome_entity_1 = require("../obe/course-outcome.entity");
+const tos_weight_entity_1 = require("../obe/tos-weight.entity");
 var EmpRole;
 (function (EmpRole) {
     EmpRole["ADMIN"] = "Admin";
@@ -73,9 +74,13 @@ __decorate([
     __metadata("design:type", Array)
 ], Employee.prototype, "masterlists", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => grade_weight_entity_1.GradeWeight, (gw) => gw.employee),
+    (0, typeorm_1.OneToMany)(() => course_outcome_entity_1.CourseOutcome, (co) => co.employee),
     __metadata("design:type", Array)
-], Employee.prototype, "gradeWeights", void 0);
+], Employee.prototype, "courseOutcomes", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => tos_weight_entity_1.TosWeight, (tw) => tw.employee),
+    __metadata("design:type", Array)
+], Employee.prototype, "tosWeights", void 0);
 exports.Employee = Employee = __decorate([
     (0, typeorm_1.Entity)('employee')
 ], Employee);

@@ -9,42 +9,26 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SaveGradebookDto = void 0;
+exports.SaveGradebookDto = exports.FinalGradeEntryDto = exports.ActivityDto = exports.ScoreEntryDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
-class FinalGradePayloadDto {
-}
-__decorate([
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], FinalGradePayloadDto.prototype, "studentId", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    __metadata("design:type", Number)
-], FinalGradePayloadDto.prototype, "weightedScore", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    __metadata("design:type", Number)
-], FinalGradePayloadDto.prototype, "numericalGrade", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], FinalGradePayloadDto.prototype, "remarks", void 0);
 class ScoreEntryDto {
 }
+exports.ScoreEntryDto = ScoreEntryDto;
 __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], ScoreEntryDto.prototype, "studentId", void 0);
 __decorate([
-    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], ScoreEntryDto.prototype, "score", void 0);
 class ActivityDto {
 }
+exports.ActivityDto = ActivityDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], ActivityDto.prototype, "activity_id", void 0);
 __decorate([
@@ -56,11 +40,40 @@ __decorate([
     __metadata("design:type", Number)
 ], ActivityDto.prototype, "maxScore", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], ActivityDto.prototype, "co_id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], ActivityDto.prototype, "type_id", void 0);
+__decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => ScoreEntryDto),
     __metadata("design:type", Array)
 ], ActivityDto.prototype, "scores", void 0);
+class FinalGradeEntryDto {
+}
+exports.FinalGradeEntryDto = FinalGradeEntryDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], FinalGradeEntryDto.prototype, "studentId", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], FinalGradeEntryDto.prototype, "weightedScore", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], FinalGradeEntryDto.prototype, "numericalGrade", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], FinalGradeEntryDto.prototype, "remarks", void 0);
 class SaveGradebookDto {
 }
 exports.SaveGradebookDto = SaveGradebookDto;
@@ -83,11 +96,17 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], SaveGradebookDto.prototype, "grading_type", void 0);
+], SaveGradebookDto.prototype, "category", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], SaveGradebookDto.prototype, "category", void 0);
+], SaveGradebookDto.prototype, "grading_type", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], SaveGradebookDto.prototype, "empid", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
@@ -99,7 +118,7 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
-    (0, class_transformer_1.Type)(() => FinalGradePayloadDto),
+    (0, class_transformer_1.Type)(() => FinalGradeEntryDto),
     __metadata("design:type", Array)
 ], SaveGradebookDto.prototype, "finalGrades", void 0);
 //# sourceMappingURL=save-gradebook.dto.js.map

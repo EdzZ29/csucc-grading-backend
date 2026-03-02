@@ -11,21 +11,32 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const class_activity_service_1 = require("./class-activity.service");
 const class_activity_controller_1 = require("./class-activity.controller");
-const class_activity_entity_1 = require("./class-activity.entity");
-const raw_score_entity_1 = require("../raw-score/raw-score.entity");
+const class_activity_entity_1 = require("../obe/class-activity.entity");
+const raw_score_entity_1 = require("../obe/raw-score.entity");
 const masterlist_entity_1 = require("../masterlist/masterlist.entity");
-const final_grade_entity_1 = require("../final-grade/final-grade.entity");
+const final_grade_entity_1 = require("../obe/final-grade.entity");
+const course_outcome_entity_1 = require("../obe/course-outcome.entity");
+const tos_weight_entity_1 = require("../obe/tos-weight.entity");
+const assessment_type_entity_1 = require("../obe/assessment-type.entity");
 let ClassActivityModule = class ClassActivityModule {
 };
 exports.ClassActivityModule = ClassActivityModule;
 exports.ClassActivityModule = ClassActivityModule = __decorate([
     (0, common_1.Module)({
-        exports: [class_activity_service_1.ClassActivityService],
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([class_activity_entity_1.ClassActivity, raw_score_entity_1.RawScore, masterlist_entity_1.Masterlist, final_grade_entity_1.FinalGrade]),
+            typeorm_1.TypeOrmModule.forFeature([
+                class_activity_entity_1.ClassActivity,
+                raw_score_entity_1.RawScore,
+                masterlist_entity_1.Masterlist,
+                final_grade_entity_1.FinalGrade,
+                course_outcome_entity_1.CourseOutcome,
+                tos_weight_entity_1.TosWeight,
+                assessment_type_entity_1.AssessmentType,
+            ]),
         ],
         controllers: [class_activity_controller_1.ClassActivityController],
         providers: [class_activity_service_1.ClassActivityService],
+        exports: [class_activity_service_1.ClassActivityService],
     })
 ], ClassActivityModule);
 //# sourceMappingURL=class-activity.module.js.map

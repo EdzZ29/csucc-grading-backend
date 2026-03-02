@@ -1,14 +1,22 @@
+/* eslint-disable prettier/prettier */
 // src/scripts/employee-seeder.ts
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 import { Employee, EmpRole } from '../employee/employee.entity';
-import { Masterlist } from '../masterlist/masterlist.entity'; // ✅ 1. Import Masterlist
+import { Masterlist } from '../masterlist/masterlist.entity';
+
+// ✅ 1. Import the new OBE entities to prevent relation errors
+import { CourseOutcome } from '../obe/course-outcome.entity';
+import { TosWeight } from '../obe/tos-weight.entity';
+import { AssessmentType } from '../obe/assessment-type.entity';
+import { ClassActivity } from '../obe/class-activity.entity';
+import { RawScore } from '../obe/raw-score.entity';
+import { FinalGrade } from '../obe/final-grade.entity';
 
 dotenv.config();
 
 const seedEmployees = async () => {
-  // 1. Setup Data Source
   const AppDataSource = new DataSource({
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -16,8 +24,19 @@ const seedEmployees = async () => {
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'admin',
     database: process.env.DB_DATABASE || 'csucc-grading',
-    entities: [Employee, Masterlist],
-    synchronize: false,
+    // ✅ 2. Add ALL entities here.
+    // TypeORM needs the full graph to resolve relations in Employee/Masterlist.
+    entities: [
+      Employee,
+      Masterlist,
+      CourseOutcome,
+      TosWeight,
+      AssessmentType,
+      ClassActivity,
+      RawScore,
+      FinalGrade,
+    ],
+    synchronize: false, // Keep false to avoid accidental schema wipes
   });
 
   try {
@@ -26,9 +45,9 @@ const seedEmployees = async () => {
 
     const employeeRepo = AppDataSource.getRepository(Employee);
 
-    // 2. Prepare Data
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash('123456', salt);
+    // 3. Prepare Data
+    // Note: Salt rounds 10 is standard for performance vs security
+    const hashedPassword = await bcrypt.hash('123456', 10);
 
     const employeesToSeed = [
       {
@@ -73,7 +92,7 @@ const seedEmployees = async () => {
       },
     ];
 
-    // 3. Insert Data
+    // 4. Insert Data
     for (const data of employeesToSeed) {
       const existing = await employeeRepo.findOneBy({ email: data.email });
       if (!existing) {
@@ -89,7 +108,6 @@ const seedEmployees = async () => {
   } catch (error) {
     console.error('❌ Seeding failed:', error);
   } finally {
-    // Check if initialized before destroying to avoid the second error in your logs
     if (AppDataSource.isInitialized) {
       await AppDataSource.destroy();
     }

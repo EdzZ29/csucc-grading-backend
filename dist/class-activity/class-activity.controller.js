@@ -16,6 +16,7 @@ exports.ClassActivityController = void 0;
 const common_1 = require("@nestjs/common");
 const class_activity_service_1 = require("./class-activity.service");
 const save_gradebook_dto_1 = require("./dto/save-gradebook.dto");
+const compute_grades_dto_1 = require("./dto/compute-grades.dto");
 let ClassActivityController = class ClassActivityController {
     constructor(service) {
         this.service = service;
@@ -31,6 +32,18 @@ let ClassActivityController = class ClassActivityController {
     }
     async delete(id) {
         return this.service.deleteActivity(id);
+    }
+    computeGrades(dto) {
+        return this.service.computeAllGrades(dto);
+    }
+    getRawScoreSheet(subjcode, section, sy, sem) {
+        return this.service.getRawScoreSheet(subjcode, section, sy, sem);
+    }
+    getPercentRatingSheet(subjcode, section, sy, sem) {
+        return this.service.getPercentRatingSheet(subjcode, section, sy, sem);
+    }
+    getFinalGradeSheet(subjcode, section, sy, sem) {
+        return this.service.getFinalGradeSheet(subjcode, section, sy, sem);
     }
 };
 exports.ClassActivityController = ClassActivityController;
@@ -64,6 +77,43 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], ClassActivityController.prototype, "delete", null);
+__decorate([
+    (0, common_1.Post)('compute-grades'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [compute_grades_dto_1.ComputeGradesDto]),
+    __metadata("design:returntype", void 0)
+], ClassActivityController.prototype, "computeGrades", null);
+__decorate([
+    (0, common_1.Get)('sheet/raw-score'),
+    __param(0, (0, common_1.Query)('subjcode')),
+    __param(1, (0, common_1.Query)('section')),
+    __param(2, (0, common_1.Query)('sy')),
+    __param(3, (0, common_1.Query)('sem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], ClassActivityController.prototype, "getRawScoreSheet", null);
+__decorate([
+    (0, common_1.Get)('sheet/percent-rating'),
+    __param(0, (0, common_1.Query)('subjcode')),
+    __param(1, (0, common_1.Query)('section')),
+    __param(2, (0, common_1.Query)('sy')),
+    __param(3, (0, common_1.Query)('sem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], ClassActivityController.prototype, "getPercentRatingSheet", null);
+__decorate([
+    (0, common_1.Get)('sheet/final-grade'),
+    __param(0, (0, common_1.Query)('subjcode')),
+    __param(1, (0, common_1.Query)('section')),
+    __param(2, (0, common_1.Query)('sy')),
+    __param(3, (0, common_1.Query)('sem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], ClassActivityController.prototype, "getFinalGradeSheet", null);
 exports.ClassActivityController = ClassActivityController = __decorate([
     (0, common_1.Controller)('class-activity'),
     __metadata("design:paramtypes", [class_activity_service_1.ClassActivityService])

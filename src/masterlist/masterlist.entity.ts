@@ -9,9 +9,9 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { Employee } from '../employee/employee.entity'; // FK: EMP_ID
-import { FinalGrade } from 'src/final-grade/final-grade.entity';
-import { RawScore } from 'src/raw-score/raw-score.entity';
+import { Employee } from '../employee/employee.entity';
+import { RawScore } from '../obe/raw-score.entity';
+import { FinalGrade } from '../obe/final-grade.entity';
 
 @Entity('masterlist')
 export class Masterlist {
@@ -21,32 +21,32 @@ export class Masterlist {
   @Column({ name: 'empid' })
   empid: number;
 
-  @Column({ type: 'varchar', length: 50, default: '' })
-  type: string;
-
-  @Column({ name: 'sy', type: 'varchar', length: 20, nullable: true })
-  sy: string; // school year
-
-  @Column({ name: 'sem', type: 'varchar', length: 20, nullable: true })
-  sem: string; // semester
-
-  @Column({
-    name: 'subjcode',
-    type: 'varchar',
-    length: 50,
-    default: '',
-    nullable: true,
-  })
+  @Column({ name: 'subjcode', type: 'varchar', length: 50 })
   subjcode: string;
 
-  @Column({
-    name: 'section',
-    type: 'varchar',
-    length: 50,
-    default: '',
-    nullable: true,
-  })
+  @Column({ name: 'section', type: 'varchar', length: 50 })
   section: string;
+
+  @Column({ name: 'sy', type: 'varchar', length: 20 })
+  sy: string;
+
+  @Column({ name: 'sem', type: 'varchar', length: 20 })
+  sem: string;
+
+  @Column({ name: 'credit_units', type: 'int', default: 0 })
+  credit_units: number;
+
+  @Column({ name: 'number_of_cos', type: 'int', default: 0 })
+  number_of_cos: number;
+
+  @Column({ name: 'no_of_students', type: 'int', default: 0 })
+  no_of_students: number;
+
+  @Column({ name: 'chairperson', type: 'varchar', length: 100, nullable: true })
+  chairperson: string;
+
+  @Column({ name: 'college_dean', type: 'varchar', length: 100, nullable: true })
+  college_dean: string;
 
   @Column({ name: 'studid', type: 'varchar', length: 50 })
   studid: string;
@@ -57,35 +57,24 @@ export class Masterlist {
   @Column({ name: 'studfirstname', type: 'varchar', length: 100 })
   studfirstname: string;
 
-  @Column({ name: 'studmiddlename', type: 'varchar', length: 100, default: '' })
-  studmiddlename: string;
+  @Column({ name: 'course', type: 'varchar', length: 100 })
+  course: string;
 
-  @Column({ name: 'studextname', type: 'varchar', length: 20, default: '' })
-  studextname: string;
-
-  @Column({ name: 'studmajor', type: 'varchar', length: 100, default: '' })
-  studmajor: string;
-
-  @Column({ name: 'studlevel', type: 'integer' })
-  studlevel: number;
-
-  @Column({ name: 'department', type: 'varchar', length: 100, default: '' })
-  department: string;
-
-  @Column({ name: 'college', type: 'varchar', length: 100, default: '' })
-  college: string;
+  @Column({ name: 'year_level', type: 'varchar', length: 50 })
+  year_level: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  // Relations
-  @ManyToOne(() => Employee, { onDelete: 'CASCADE' })
+  // --- Relations ---
+
+  @ManyToOne(() => Employee, (emp) => emp.masterlists, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'empid' })
   employee: Employee;
 
-  @OneToOne(() => FinalGrade, (grade) => grade.student)
-  finalGrade: FinalGrade;
-
-  @OneToMany(() => RawScore, (score) => score.student)
+  @OneToMany(() => RawScore, (rs) => rs.student)
   rawScores: RawScore[];
+
+  @OneToOne(() => FinalGrade, (fg) => fg.student)
+  finalGrade: FinalGrade;
 }

@@ -12,8 +12,6 @@ export declare class MasterlistController {
     findOne(id: number, req: Request): Promise<Masterlist>;
     importCsv(importDto: ImportMasterlistDto): Promise<{
         success: boolean;
-        message: string;
-        totalRows: number;
         successCount: number;
         failedCount: number;
         errors: {

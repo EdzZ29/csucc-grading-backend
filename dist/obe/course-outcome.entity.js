@@ -9,45 +9,55 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ClassActivity = void 0;
+exports.CourseOutcome = void 0;
 const typeorm_1 = require("typeorm");
-const raw_score_entity_1 = require("../raw-score/raw-score.entity");
-let ClassActivity = class ClassActivity {
+const employee_entity_1 = require("../employee/employee.entity");
+const tos_weight_entity_1 = require("./tos-weight.entity");
+let CourseOutcome = class CourseOutcome {
 };
-exports.ClassActivity = ClassActivity;
+exports.CourseOutcome = CourseOutcome;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], ClassActivity.prototype, "activity_id", void 0);
+], CourseOutcome.prototype, "co_id", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], ClassActivity.prototype, "grading_type", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], ClassActivity.prototype, "category", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], ClassActivity.prototype, "subjcode", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], ClassActivity.prototype, "section", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", String)
-], ClassActivity.prototype, "activity_name", void 0);
-__decorate([
-    (0, typeorm_1.Column)('int'),
     __metadata("design:type", Number)
-], ClassActivity.prototype, "max_score", void 0);
+], CourseOutcome.prototype, "empid", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => raw_score_entity_1.RawScore, (score) => score.activity),
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], CourseOutcome.prototype, "subjcode", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], CourseOutcome.prototype, "section", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], CourseOutcome.prototype, "sy", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], CourseOutcome.prototype, "sem", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], CourseOutcome.prototype, "co_code", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text' }),
+    __metadata("design:type", String)
+], CourseOutcome.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => employee_entity_1.Employee, (emp) => emp.courseOutcomes),
+    (0, typeorm_1.JoinColumn)({ name: 'empid' }),
+    __metadata("design:type", employee_entity_1.Employee)
+], CourseOutcome.prototype, "employee", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => tos_weight_entity_1.TosWeight, (tw) => tw.courseOutcome),
     __metadata("design:type", Array)
-], ClassActivity.prototype, "scores", void 0);
-exports.ClassActivity = ClassActivity = __decorate([
-    (0, typeorm_1.Entity)('class_activity')
-], ClassActivity);
-//# sourceMappingURL=class-activity.entity.js.map
+], CourseOutcome.prototype, "tosWeights", void 0);
+exports.CourseOutcome = CourseOutcome = __decorate([
+    (0, typeorm_1.Entity)('course_outcomes')
+], CourseOutcome);
+//# sourceMappingURL=course-outcome.entity.js.map

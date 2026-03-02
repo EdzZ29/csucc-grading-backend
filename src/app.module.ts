@@ -10,6 +10,7 @@ import { ClassActivityModule } from './class-activity/class-activity.module';
 import { RawScoreModule } from './raw-score/raw-score.module';
 import { FinalGradeModule } from './final-grade/final-grade.module';
 import { PredictionModule } from './prediction/prediction.module';
+import { ObeModule } from './obe/obe.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PredictionModule } from './prediction/prediction.module';
     RawScoreModule,
     FinalGradeModule,
     PredictionModule,
+    ObeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

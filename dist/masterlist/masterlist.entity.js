@@ -12,8 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Masterlist = void 0;
 const typeorm_1 = require("typeorm");
 const employee_entity_1 = require("../employee/employee.entity");
-const final_grade_entity_1 = require("../final-grade/final-grade.entity");
-const raw_score_entity_1 = require("../raw-score/raw-score.entity");
+const raw_score_entity_1 = require("../obe/raw-score.entity");
+const final_grade_entity_1 = require("../obe/final-grade.entity");
 let Masterlist = class Masterlist {
 };
 exports.Masterlist = Masterlist;
@@ -26,37 +26,41 @@ __decorate([
     __metadata("design:type", Number)
 ], Masterlist.prototype, "empid", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, default: '' }),
-    __metadata("design:type", String)
-], Masterlist.prototype, "type", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'sy', type: 'varchar', length: 20, nullable: true }),
-    __metadata("design:type", String)
-], Masterlist.prototype, "sy", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'sem', type: 'varchar', length: 20, nullable: true }),
-    __metadata("design:type", String)
-], Masterlist.prototype, "sem", void 0);
-__decorate([
-    (0, typeorm_1.Column)({
-        name: 'subjcode',
-        type: 'varchar',
-        length: 50,
-        default: '',
-        nullable: true,
-    }),
+    (0, typeorm_1.Column)({ name: 'subjcode', type: 'varchar', length: 50 }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "subjcode", void 0);
 __decorate([
-    (0, typeorm_1.Column)({
-        name: 'section',
-        type: 'varchar',
-        length: 50,
-        default: '',
-        nullable: true,
-    }),
+    (0, typeorm_1.Column)({ name: 'section', type: 'varchar', length: 50 }),
     __metadata("design:type", String)
 ], Masterlist.prototype, "section", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'sy', type: 'varchar', length: 20 }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "sy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'sem', type: 'varchar', length: 20 }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "sem", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'credit_units', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Masterlist.prototype, "credit_units", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'number_of_cos', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Masterlist.prototype, "number_of_cos", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'no_of_students', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Masterlist.prototype, "no_of_students", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'chairperson', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "chairperson", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'college_dean', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", String)
+], Masterlist.prototype, "college_dean", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'studid', type: 'varchar', length: 50 }),
     __metadata("design:type", String)
@@ -70,46 +74,30 @@ __decorate([
     __metadata("design:type", String)
 ], Masterlist.prototype, "studfirstname", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'studmiddlename', type: 'varchar', length: 100, default: '' }),
+    (0, typeorm_1.Column)({ name: 'course', type: 'varchar', length: 100 }),
     __metadata("design:type", String)
-], Masterlist.prototype, "studmiddlename", void 0);
+], Masterlist.prototype, "course", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'studextname', type: 'varchar', length: 20, default: '' }),
+    (0, typeorm_1.Column)({ name: 'year_level', type: 'varchar', length: 50 }),
     __metadata("design:type", String)
-], Masterlist.prototype, "studextname", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'studmajor', type: 'varchar', length: 100, default: '' }),
-    __metadata("design:type", String)
-], Masterlist.prototype, "studmajor", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'studlevel', type: 'integer' }),
-    __metadata("design:type", Number)
-], Masterlist.prototype, "studlevel", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'department', type: 'varchar', length: 100, default: '' }),
-    __metadata("design:type", String)
-], Masterlist.prototype, "department", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'college', type: 'varchar', length: 100, default: '' }),
-    __metadata("design:type", String)
-], Masterlist.prototype, "college", void 0);
+], Masterlist.prototype, "year_level", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
 ], Masterlist.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => employee_entity_1.Employee, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => employee_entity_1.Employee, (emp) => emp.masterlists, { onDelete: 'CASCADE' }),
     (0, typeorm_1.JoinColumn)({ name: 'empid' }),
     __metadata("design:type", employee_entity_1.Employee)
 ], Masterlist.prototype, "employee", void 0);
 __decorate([
-    (0, typeorm_1.OneToOne)(() => final_grade_entity_1.FinalGrade, (grade) => grade.student),
-    __metadata("design:type", final_grade_entity_1.FinalGrade)
-], Masterlist.prototype, "finalGrade", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => raw_score_entity_1.RawScore, (score) => score.student),
+    (0, typeorm_1.OneToMany)(() => raw_score_entity_1.RawScore, (rs) => rs.student),
     __metadata("design:type", Array)
 ], Masterlist.prototype, "rawScores", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => final_grade_entity_1.FinalGrade, (fg) => fg.student),
+    __metadata("design:type", final_grade_entity_1.FinalGrade)
+], Masterlist.prototype, "finalGrade", void 0);
 exports.Masterlist = Masterlist = __decorate([
     (0, typeorm_1.Entity)('masterlist')
 ], Masterlist);

@@ -6,14 +6,14 @@ export declare class MasterlistService {
     private readonly masterlistRepo;
     private readonly employeeRepo;
     constructor(masterlistRepo: Repository<Masterlist>, employeeRepo: Repository<Employee>);
-    private isAdmin;
-    findAllForUser(user: Employee): Promise<Masterlist[]>;
+    findByYearAndSem(sy: string, sem: string, user: Employee): Promise<Masterlist[]>;
+    findBySYSemAndEmployee(sy: string, sem: string, empid: number): Promise<Masterlist[]>;
+    findBySYandSem(sy: string, sem: string): Promise<Masterlist[]>;
     getUniqueSubjectsCount(): Promise<number>;
+    findAllForUser(user: Employee): Promise<Masterlist[]>;
     findOneForUser(id: number, user: Employee): Promise<Masterlist>;
     importCsv(data: ImportMasterlistDto): Promise<{
         success: boolean;
-        message: string;
-        totalRows: number;
         successCount: number;
         failedCount: number;
         errors: {
@@ -22,7 +22,4 @@ export declare class MasterlistService {
             data: any;
         }[];
     }>;
-    findByYearAndSem(sy: string, sem: string, user: Employee): Promise<Masterlist[]>;
-    findBySYSemAndEmployee(sy: string, sem: string, empid: number): Promise<Masterlist[]>;
-    findBySYandSem(sy: string, sem: string): Promise<Masterlist[]>;
 }

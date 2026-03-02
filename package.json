@@ -18,7 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed:employee": "ts-node -r tsconfig-paths/register src/scripts/employee-seeder.ts"
+    "seed:employee": "ts-node -r tsconfig-paths/register src/scripts/employee-seeder.ts",
+    "seed:assessment": "ts-node -r tsconfig-paths/register src/scripts/assessment-type-seeder.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^2.0.0",
@@ -34,7 +35,7 @@
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.1",
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
+    "class-validator": "^0.14.4",
     "cookie-parser": "^1.4.7",
     "mysql": "^2.18.1",
     "passport-jwt": "^4.0.1",

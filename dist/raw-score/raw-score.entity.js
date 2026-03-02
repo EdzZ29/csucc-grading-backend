@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RawScore = void 0;
 const typeorm_1 = require("typeorm");
 const masterlist_entity_1 = require("../masterlist/masterlist.entity");
-const class_activity_entity_1 = require("../class-activity/class-activity.entity");
+const class_activity_entity_1 = require("../obe/class-activity.entity");
 let RawScore = class RawScore {
 };
 exports.RawScore = RawScore;
@@ -21,29 +21,27 @@ __decorate([
     __metadata("design:type", Number)
 ], RawScore.prototype, "raw_score_id", void 0);
 __decorate([
-    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], RawScore.prototype, "masterlist_id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => masterlist_entity_1.Masterlist),
-    (0, typeorm_1.JoinColumn)({ name: 'masterlist_id' }),
-    __metadata("design:type", masterlist_entity_1.Masterlist)
-], RawScore.prototype, "student", void 0);
-__decorate([
-    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], RawScore.prototype, "activity_id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => class_activity_entity_1.ClassActivity, (activity) => activity.scores),
+    (0, typeorm_1.Column)({ type: 'float' }),
+    __metadata("design:type", Number)
+], RawScore.prototype, "score", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => masterlist_entity_1.Masterlist, (m) => m.rawScores),
+    (0, typeorm_1.JoinColumn)({ name: 'masterlist_id' }),
+    __metadata("design:type", masterlist_entity_1.Masterlist)
+], RawScore.prototype, "student", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => class_activity_entity_1.ClassActivity, (a) => a.scores),
     (0, typeorm_1.JoinColumn)({ name: 'activity_id' }),
     __metadata("design:type", class_activity_entity_1.ClassActivity)
 ], RawScore.prototype, "activity", void 0);
-__decorate([
-    (0, typeorm_1.Column)('float', { nullable: true, default: null }),
-    __metadata("design:type", Number)
-], RawScore.prototype, "score", void 0);
 exports.RawScore = RawScore = __decorate([
     (0, typeorm_1.Entity)('raw_score')
 ], RawScore);

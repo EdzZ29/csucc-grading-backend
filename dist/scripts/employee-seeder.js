@@ -5,6 +5,12 @@ const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 const employee_entity_1 = require("../employee/employee.entity");
 const masterlist_entity_1 = require("../masterlist/masterlist.entity");
+const course_outcome_entity_1 = require("../obe/course-outcome.entity");
+const tos_weight_entity_1 = require("../obe/tos-weight.entity");
+const assessment_type_entity_1 = require("../obe/assessment-type.entity");
+const class_activity_entity_1 = require("../obe/class-activity.entity");
+const raw_score_entity_1 = require("../obe/raw-score.entity");
+const final_grade_entity_1 = require("../obe/final-grade.entity");
 dotenv.config();
 const seedEmployees = async () => {
     const AppDataSource = new typeorm_1.DataSource({
@@ -14,15 +20,23 @@ const seedEmployees = async () => {
         username: process.env.DB_USERNAME || 'postgres',
         password: process.env.DB_PASSWORD || 'admin',
         database: process.env.DB_DATABASE || 'csucc-grading',
-        entities: [employee_entity_1.Employee, masterlist_entity_1.Masterlist],
+        entities: [
+            employee_entity_1.Employee,
+            masterlist_entity_1.Masterlist,
+            course_outcome_entity_1.CourseOutcome,
+            tos_weight_entity_1.TosWeight,
+            assessment_type_entity_1.AssessmentType,
+            class_activity_entity_1.ClassActivity,
+            raw_score_entity_1.RawScore,
+            final_grade_entity_1.FinalGrade,
+        ],
         synchronize: false,
     });
     try {
         await AppDataSource.initialize();
         console.log('📦 Database connected for Employee seeding...');
         const employeeRepo = AppDataSource.getRepository(employee_entity_1.Employee);
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash('123456', salt);
+        const hashedPassword = await bcrypt.hash('123456', 10);
         const employeesToSeed = [
             {
                 firstname: 'Edz',

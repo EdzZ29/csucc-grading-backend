@@ -1,5 +1,6 @@
 import { Masterlist } from '../masterlist/masterlist.entity';
-import { GradeWeight } from '../grade-weight/grade-weight.entity';
+import { CourseOutcome } from '../obe/course-outcome.entity';
+import { TosWeight } from '../obe/tos-weight.entity';
 export declare enum EmpRole {
     ADMIN = "Admin",
     INSTRUCTOR = "Instructor",
@@ -19,5 +20,6 @@ export declare class Employee {
     isactive: boolean;
     created_at: Date;
     masterlists: Masterlist[];
-    gradeWeights: GradeWeight[];
+    courseOutcomes: CourseOutcome[];
+    tosWeights: TosWeight[];
 }

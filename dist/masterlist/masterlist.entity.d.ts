@@ -1,25 +1,25 @@
 import { Employee } from '../employee/employee.entity';
-import { FinalGrade } from 'src/final-grade/final-grade.entity';
-import { RawScore } from 'src/raw-score/raw-score.entity';
+import { RawScore } from '../obe/raw-score.entity';
+import { FinalGrade } from '../obe/final-grade.entity';
 export declare class Masterlist {
     masterlist_id: number;
     empid: number;
-    type: string;
-    sy: string;
-    sem: string;
     subjcode: string;
     section: string;
+    sy: string;
+    sem: string;
+    credit_units: number;
+    number_of_cos: number;
+    no_of_students: number;
+    chairperson: string;
+    college_dean: string;
     studid: string;
     studlastname: string;
     studfirstname: string;
-    studmiddlename: string;
-    studextname: string;
-    studmajor: string;
-    studlevel: number;
-    department: string;
-    college: string;
+    course: string;
+    year_level: string;
     createdAt: Date;
     employee: Employee;
-    finalGrade: FinalGrade;
     rawScores: RawScore[];
+    finalGrade: FinalGrade;
 }

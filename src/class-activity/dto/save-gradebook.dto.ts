@@ -1,14 +1,49 @@
 /* eslint-disable prettier/prettier */
 import {
   IsString,
-  IsNumber,
+  IsOptional,
   IsArray,
   ValidateNested,
-  IsOptional,
+  IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class FinalGradePayloadDto {
+export class ScoreEntryDto {
+  @IsString()
+  studentId: string;
+
+  @IsNumber()
+  score: number;
+}
+
+export class ActivityDto {
+  @IsOptional()
+  @IsNumber()
+  activity_id?: number;
+
+  @IsString()
+  name: string;
+
+  @IsNumber()
+  maxScore: number;
+
+  /** FK to course_outcomes — preferred for OBE computation */
+  @IsOptional()
+  @IsNumber()
+  co_id?: number;
+
+  /** FK to assessment_types — preferred for OBE computation */
+  @IsOptional()
+  @IsNumber()
+  type_id?: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ScoreEntryDto)
+  scores: ScoreEntryDto[];
+}
+
+export class FinalGradeEntryDto {
   @IsString()
   studentId: string;
 
@@ -20,31 +55,6 @@ class FinalGradePayloadDto {
 
   @IsString()
   remarks: string;
-}
-
-class ScoreEntryDto {
-  @IsString()
-  studentId: string;
-
-  @IsOptional()
-  @IsNumber()
-  score: number;
-}
-
-class ActivityDto {
-  @IsOptional()
-  activity_id: number;
-
-  @IsString()
-  name: string;
-
-  @IsNumber()
-  maxScore: number;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ScoreEntryDto)
-  scores: ScoreEntryDto[];
 }
 
 export class SaveGradebookDto {
@@ -60,21 +70,27 @@ export class SaveGradebookDto {
   @IsString()
   sem: string;
 
-  @IsString()
-  grading_type: string;
-
+  /** Assessment type code for filtering: "QZ","EX","CA" */
   @IsString()
   category: string;
+
+  @IsOptional()
+  @IsString()
+  grading_type?: string;
+
+  @IsOptional()
+  @IsNumber()
+  empid?: number;
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ActivityDto)
-  activities: ActivityDto[];
+  activities?: ActivityDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => FinalGradePayloadDto)
-  finalGrades: FinalGradePayloadDto[];
+  @Type(() => FinalGradeEntryDto)
+  finalGrades?: FinalGradeEntryDto[];
 }
