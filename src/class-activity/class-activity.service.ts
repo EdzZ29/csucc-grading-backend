@@ -1,8 +1,7 @@
-/* eslint-disable prettier/prettier */
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ClassActivity } from '../obe/class-activity.entity'; // ← UNIFIED entity from obe/
+import { ClassActivity } from '../obe/class-activity.entity';
 import { RawScore } from '../obe/raw-score.entity';
 import { Masterlist } from '../masterlist/masterlist.entity';
 import { FinalGrade } from '../obe/final-grade.entity';
@@ -11,7 +10,11 @@ import { TosWeight } from '../obe/tos-weight.entity';
 import { AssessmentType } from '../obe/assessment-type.entity';
 import { SaveGradebookDto } from './dto/save-gradebook.dto';
 import { ComputeGradesDto } from './dto/compute-grades.dto';
-import { transmuteGrade, deriveRemarks } from '../shared/transmutation-table';
+import {
+  transmuteGrade,
+  deriveRemarks,
+  CO_PASS_THRESHOLD,
+} from '../shared/transmutation-table';
 
 /* ════════════════════════════════════════════════════════════════
  *  RESPONSE INTERFACES
@@ -28,21 +31,26 @@ interface RawScoreCell {
 
 interface PercentRatingCell {
   activity_id: number;
-  activity_name: string;
-  co_id: number;
-  type_id: number;
-  percent: number | null; // 0–100
+  percent: number | null;
 }
 
-/** One cell in the WEIGHTED % RATING sheet (one per CO × Type group) */
 interface WeightedRatingCell {
+  activity_id: number;
   co_id: number;
   co_code: string;
   type_id: number;
-  type_code: string;
   weight_percentage: number;
-  avg_percent: number;
+  percent_rating: number;
   weighted_value: number;
+}
+
+/** Per-CO summary in FINAL GRADE sheet */
+interface CoGradeResult {
+  co_id: number;
+  co_code: string;
+  sum_weighted: number;
+  max_possible: number;
+  passed: boolean;
 }
 
 export interface StudentGradeRow {
@@ -52,6 +60,7 @@ export interface StudentGradeRow {
   raw_scores: RawScoreCell[];
   percent_ratings: PercentRatingCell[];
   weighted_ratings: WeightedRatingCell[];
+  co_results: CoGradeResult[];
   total_weighted_percent: number;
   final_numerical_grade: number;
   remarks: string;
@@ -107,7 +116,6 @@ export class ClassActivityService {
     });
     const studentMap = new Map(allStudents.map((s) => [s.studid, s]));
 
-    // Resolve type_id from category code if not provided per-activity
     let resolvedTypeId: number | null = null;
     if (dto.category) {
       const assessmentType = await this.assessmentTypeRepo.findOne({
@@ -140,14 +148,12 @@ export class ClassActivityService {
       activity.activity_name = actDto.name;
       activity.max_score = actDto.maxScore;
 
-      // Populate OBE FK columns so the computation pipeline can use them
       if (actDto.co_id != null) activity.co_id = actDto.co_id;
       if (actDto.type_id != null) activity.type_id = actDto.type_id;
       else if (resolvedTypeId != null) activity.type_id = resolvedTypeId;
 
       const savedActivity = await this.activityRepo.save(activity);
 
-      // Upsert scores
       const existingScores = await this.scoreRepo.find({
         where: { activity: { activity_id: savedActivity.activity_id } },
         relations: ['student'],
@@ -192,7 +198,36 @@ export class ClassActivityService {
 
   /* ──────────────────────────────────────────────────────────────
    * 2. FULL OBE COMPUTATION PIPELINE
-   *    Excel flow: RAW SCORE → % RATING → WEIGHTED % RATING → FINAL GRADE
+   *
+   *    Matches Excel exactly:
+   *      RAW SCORE → % RATING → WEIGHTED % RATING → FINAL GRADE
+   *
+   *    KEY CHANGES from previous version:
+   *    - Weight is per ACTIVITY (not per CO×Type group)
+   *    - Per-CO pass/fail check (60% threshold)
+   *    - INC logic: passed overall but failed ≥1 CO = "INC"
+   *
+   *    How weights work (matching Course Details sheet):
+   *    - Each activity belongs to a CO and has an assessment type
+   *    - TOS weight defines: for this CO × Type, the total weight is X%
+   *    - If there are N activities under the same CO × Type,
+   *      each activity gets X/N % of the weight
+   *    - All weights across ALL activities sum to 100%
+   *
+   *    WEIGHTED % RATING formula (per activity):
+   *      = (raw_score / max_score * 100) * per_activity_weight%
+   *      = percent_rating * per_activity_weight / 100
+   *
+   *    FINAL GRADE per CO:
+   *      = SUMIF(all weighted values where CO matches)
+   *      PASSED if sum > (max_possible_for_CO * 0.6 * 100) - 0.01
+   *
+   *    FINAL GRADE total:
+   *      = SUM of all CO sums, rounded to whole number
+   *      VLOOKUP → numerical grade (1.00–5.00)
+   *      IF grade ≤ 3.00 AND all COs passed → "PASSED"
+   *      IF grade ≤ 3.00 AND missed ≥1 CO  → "INC"
+   *      IF grade > 3.00                    → "FAILED"
    * ────────────────────────────────────────────────────────────── */
 
   async computeAllGrades(dto: ComputeGradesDto): Promise<StudentGradeRow[]> {
@@ -204,27 +239,66 @@ export class ClassActivityService {
     });
     if (!students.length) throw new NotFoundException('No students enrolled');
 
-    // Load ALL activities for this class with their scores
     const activities = await this.activityRepo.find({
       where: { subjcode, section },
       relations: ['scores'],
       order: { activity_id: 'ASC' },
     });
 
-    // Load Course Outcomes for label lookup
     const courseOutcomes = await this.coRepo.find({
       where: { empid, subjcode, section },
     });
-    const coIdToCode = new Map(courseOutcomes.map((co) => [co.co_id, co.co_code]));
+    const coIdToCode = new Map(
+      courseOutcomes.map((co) => [co.co_id, co.co_code]),
+    );
+    const numCOs = courseOutcomes.length;
 
-    // Load Assessment Types for label lookup
-    const assessmentTypes = await this.assessmentTypeRepo.find();
-    const typeIdToCode = new Map(assessmentTypes.map((at) => [at.type_id, at.code]));
-
-    // Load TOS weights (the weight matrix)
     const tosWeights = await this.tosRepo.find({
       where: { empid, subjcode, section },
     });
+
+    // ── Build per-activity weight map ───────────────────────────
+    // Excel assigns weight per activity column. We distribute the TOS
+    // cell weight equally among all activities in that CO × Type group.
+    //
+    // Example: TOS says CO1 × QZ = 30%. There are 3 quizzes under CO1.
+    //          Each quiz gets 30% / 3 = 10% per-activity weight.
+    //
+    // This matches the Excel's Course Details sheet where each activity
+    // row has its own weight % that sums to 100% total.
+
+    const activityWeightMap = new Map<number, number>(); // activity_id → weight%
+
+    for (const tw of tosWeights) {
+      // Find activities matching this TOS cell
+      const matchingActivities = activities.filter(
+        (a) => a.co_id === tw.co_id && a.type_id === tw.type_id,
+      );
+
+      if (matchingActivities.length === 0) continue;
+
+      // Distribute weight equally among activities in this group
+      const perActivityWeight =
+        tw.weight_percentage / matchingActivities.length;
+
+      for (const act of matchingActivities) {
+        // Accumulate in case an activity somehow matches multiple TOS rows
+        const existing = activityWeightMap.get(act.activity_id) || 0;
+        activityWeightMap.set(act.activity_id, existing + perActivityWeight);
+      }
+    }
+
+    // ── Build max-possible weight per CO (for pass threshold) ───
+    // Excel: G21 = SUMIF(weighted_headers, "CO1", weighted_row22) / 100
+    // This is the sum of per-activity weights for each CO
+    const maxWeightPerCo = new Map<number, number>(); // co_id → total weight%
+    for (const act of activities) {
+      const w = activityWeightMap.get(act.activity_id) || 0;
+      if (w > 0 && act.co_id) {
+        const existing = maxWeightPerCo.get(act.co_id) || 0;
+        maxWeightPerCo.set(act.co_id, existing + w);
+      }
+    }
 
     // ── Build per-student grade rows ────────────────────────────
     const results: StudentGradeRow[] = [];
@@ -245,66 +319,92 @@ export class ClassActivityService {
         };
       });
 
-      // ─── STEP B: % RATING sheet ─────────────────────────────
-      //   Excel: = 'RAW SCORE'!D7 / TOS!D$2 * 100
+      // ─── STEP B: % RATING sheet ──────────────────────────────
+      // Excel: = (raw / max) * 100
       const percentRatings: PercentRatingCell[] = rawScores.map((rs) => ({
         activity_id: rs.activity_id,
-        activity_name: rs.activity_name,
-        co_id: rs.co_id,
-        type_id: rs.type_id,
         percent:
           rs.score !== null && rs.max_score > 0
             ? (rs.score / rs.max_score) * 100
             : null,
       }));
 
-      // ─── STEP C: WEIGHTED % RATING sheet ─────────────────────
-      //   For each TOS weight row (one per CO × AssessmentType):
-      //     1. Find all activities matching co_id AND type_id
-      //     2. avg% = sum(scores) / sum(max_scores) * 100
-      //     3. weighted = avg% × weight_percentage / 100
+      // ─── STEP C: WEIGHTED % RATING sheet ──────────────────────
+      // Excel: = ((raw / max) * 100) * weight%
+      // where weight% is the per-activity weight (with % operator = /100)
       const weightedRatings: WeightedRatingCell[] = [];
 
-      for (const tw of tosWeights) {
-        // Find raw scores for activities that match this weight's CO and type
-        const matchingRaw = rawScores.filter(
-          (rs) => rs.co_id === tw.co_id && rs.type_id === tw.type_id,
-        );
+      for (const rs of rawScores) {
+        const weight = activityWeightMap.get(rs.activity_id) || 0;
+        if (weight === 0) continue; // skip activities with no TOS weight
 
-        let avgPercent = 0;
-        if (matchingRaw.length > 0) {
-          const sumScores = matchingRaw.reduce(
-            (a, r) => a + (r.score ?? 0),
-            0,
-          );
-          const sumMax = matchingRaw.reduce((a, r) => a + r.max_score, 0);
-          avgPercent = sumMax > 0 ? (sumScores / sumMax) * 100 : 0;
-        }
+        const pctRating =
+          rs.score !== null && rs.max_score > 0
+            ? (rs.score / rs.max_score) * 100
+            : 0;
 
-        const weightedValue = (avgPercent * tw.weight_percentage) / 100;
+        // Excel: pctRating * weight%  (the % operator divides by 100)
+        const weightedValue = (pctRating * weight) / 100;
 
         weightedRatings.push({
-          co_id: tw.co_id,
-          co_code: coIdToCode.get(tw.co_id) ?? `CO?`,
-          type_id: tw.type_id,
-          type_code: typeIdToCode.get(tw.type_id) ?? `T?`,
-          weight_percentage: tw.weight_percentage,
-          avg_percent: Math.round(avgPercent * 100) / 100,
+          activity_id: rs.activity_id,
+          co_id: rs.co_id,
+          co_code: coIdToCode.get(rs.co_id) ?? 'CO?',
+          type_id: rs.type_id,
+          weight_percentage: Math.round(weight * 100) / 100,
+          percent_rating: Math.round(pctRating * 100) / 100,
           weighted_value: Math.round(weightedValue * 100) / 100,
         });
       }
 
-      // ─── STEP D: FINAL GRADE sheet ───────────────────────────
-      //   total = SUM of all weighted_value
-      //   grade = VLOOKUP on Transmutation Table
-      //   remarks = IF(grade<=3,"PASSED","FAILED")
-      const totalWeighted = weightedRatings.reduce(
-        (sum, wr) => sum + wr.weighted_value,
+      // ─── STEP D: FINAL GRADE sheet — per-CO sums + pass check ─
+      // Excel: G23 = SUMIF(headers, "CO1", student_weighted_row)
+      //         H23 = IF(G23 > (G21 * 0.6 * 100) - 0.01, "PASSED", "-")
+      const coResults: CoGradeResult[] = [];
+      let allCosPassed = true;
+
+      for (const co of courseOutcomes) {
+        // Sum weighted values for this CO
+        const coWeighted = weightedRatings
+          .filter((wr) => wr.co_id === co.co_id)
+          .reduce((sum, wr) => sum + wr.weighted_value, 0);
+
+        // Max possible for this CO (the sum of per-activity weights)
+        const coMax = maxWeightPerCo.get(co.co_id) || 0;
+
+        // Excel threshold: sum > (maxWeight * 0.6 * 100) - 0.01
+        // When coMax = 0 (no activities for this CO):
+        //   threshold = (0 * 0.6) - 0.01 = -0.01
+        //   0 > -0.01 → TRUE → "PASSED"
+        // This means COs with no activities auto-pass in the Excel.
+        // The -0.01 grace margin is intentional.
+        const threshold = coMax * CO_PASS_THRESHOLD - 0.01;
+        const passed = coWeighted > threshold;
+
+        if (!passed) allCosPassed = false;
+
+        coResults.push({
+          co_id: co.co_id,
+          co_code: co.co_code,
+          sum_weighted: Math.round(coWeighted * 100) / 100,
+          max_possible: Math.round(coMax * 100) / 100,
+          passed,
+        });
+      }
+
+      // ─── STEP E: Total + Transmutation + Remarks ──────────────
+      // Excel: D23 = ROUND(SUM(G23,I23,K23,...), 0)
+      const totalWeighted = coResults.reduce(
+        (sum, cr) => sum + cr.sum_weighted,
         0,
       );
-      const totalRounded = Math.round(totalWeighted * 100) / 100;
+      const totalRounded = Math.round(totalWeighted);
+
+      // Excel: E23 = VLOOKUP(D23, transmutation_table, 2, TRUE)
       const numericalGrade = transmuteGrade(totalRounded);
-      const remarks = deriveRemarks(numericalGrade);
+
+      // Excel: F23 = IF(E23<3.01, IF(COUNTIF(..."PASSED")=numCOs, "PASSED", "INC"), "")
+      const remarks = deriveRemarks(numericalGrade, allCosPassed);
 
       // Persist to final_grade table
       let fg = await this.finalGradeRepo.findOne({
@@ -327,6 +427,7 @@ export class ClassActivityService {
         raw_scores: rawScores,
         percent_ratings: percentRatings,
         weighted_ratings: weightedRatings,
+        co_results: coResults,
         total_weighted_percent: totalRounded,
         final_numerical_grade: numericalGrade,
         remarks,

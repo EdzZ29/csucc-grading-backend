@@ -18,19 +18,23 @@ interface RawScoreCell {
 }
 interface PercentRatingCell {
     activity_id: number;
-    activity_name: string;
-    co_id: number;
-    type_id: number;
     percent: number | null;
 }
 interface WeightedRatingCell {
+    activity_id: number;
     co_id: number;
     co_code: string;
     type_id: number;
-    type_code: string;
     weight_percentage: number;
-    avg_percent: number;
+    percent_rating: number;
     weighted_value: number;
+}
+interface CoGradeResult {
+    co_id: number;
+    co_code: string;
+    sum_weighted: number;
+    max_possible: number;
+    passed: boolean;
 }
 export interface StudentGradeRow {
     masterlist_id: number;
@@ -39,6 +43,7 @@ export interface StudentGradeRow {
     raw_scores: RawScoreCell[];
     percent_ratings: PercentRatingCell[];
     weighted_ratings: WeightedRatingCell[];
+    co_results: CoGradeResult[];
     total_weighted_percent: number;
     final_numerical_grade: number;
     remarks: string;

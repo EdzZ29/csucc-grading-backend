@@ -127,7 +127,7 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
         return { success: true, message: 'Activity deleted successfully' };
     }
     async computeAllGrades(dto) {
-        var _a, _b;
+        var _a;
         const { empid, subjcode, section, sy, sem } = dto;
         const students = await this.masterlistRepo.find({
             where: { subjcode, section, sy, sem },
@@ -143,11 +143,29 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
             where: { empid, subjcode, section },
         });
         const coIdToCode = new Map(courseOutcomes.map((co) => [co.co_id, co.co_code]));
-        const assessmentTypes = await this.assessmentTypeRepo.find();
-        const typeIdToCode = new Map(assessmentTypes.map((at) => [at.type_id, at.code]));
+        const numCOs = courseOutcomes.length;
         const tosWeights = await this.tosRepo.find({
             where: { empid, subjcode, section },
         });
+        const activityWeightMap = new Map();
+        for (const tw of tosWeights) {
+            const matchingActivities = activities.filter((a) => a.co_id === tw.co_id && a.type_id === tw.type_id);
+            if (matchingActivities.length === 0)
+                continue;
+            const perActivityWeight = tw.weight_percentage / matchingActivities.length;
+            for (const act of matchingActivities) {
+                const existing = activityWeightMap.get(act.activity_id) || 0;
+                activityWeightMap.set(act.activity_id, existing + perActivityWeight);
+            }
+        }
+        const maxWeightPerCo = new Map();
+        for (const act of activities) {
+            const w = activityWeightMap.get(act.activity_id) || 0;
+            if (w > 0 && act.co_id) {
+                const existing = maxWeightPerCo.get(act.co_id) || 0;
+                maxWeightPerCo.set(act.co_id, existing + w);
+            }
+        }
         const results = [];
         for (const student of students) {
             const rawScores = activities.map((act) => {
@@ -164,37 +182,52 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
             });
             const percentRatings = rawScores.map((rs) => ({
                 activity_id: rs.activity_id,
-                activity_name: rs.activity_name,
-                co_id: rs.co_id,
-                type_id: rs.type_id,
                 percent: rs.score !== null && rs.max_score > 0
                     ? (rs.score / rs.max_score) * 100
                     : null,
             }));
             const weightedRatings = [];
-            for (const tw of tosWeights) {
-                const matchingRaw = rawScores.filter((rs) => rs.co_id === tw.co_id && rs.type_id === tw.type_id);
-                let avgPercent = 0;
-                if (matchingRaw.length > 0) {
-                    const sumScores = matchingRaw.reduce((a, r) => { var _a; return a + ((_a = r.score) !== null && _a !== void 0 ? _a : 0); }, 0);
-                    const sumMax = matchingRaw.reduce((a, r) => a + r.max_score, 0);
-                    avgPercent = sumMax > 0 ? (sumScores / sumMax) * 100 : 0;
-                }
-                const weightedValue = (avgPercent * tw.weight_percentage) / 100;
+            for (const rs of rawScores) {
+                const weight = activityWeightMap.get(rs.activity_id) || 0;
+                if (weight === 0)
+                    continue;
+                const pctRating = rs.score !== null && rs.max_score > 0
+                    ? (rs.score / rs.max_score) * 100
+                    : 0;
+                const weightedValue = (pctRating * weight) / 100;
                 weightedRatings.push({
-                    co_id: tw.co_id,
-                    co_code: (_a = coIdToCode.get(tw.co_id)) !== null && _a !== void 0 ? _a : `CO?`,
-                    type_id: tw.type_id,
-                    type_code: (_b = typeIdToCode.get(tw.type_id)) !== null && _b !== void 0 ? _b : `T?`,
-                    weight_percentage: tw.weight_percentage,
-                    avg_percent: Math.round(avgPercent * 100) / 100,
+                    activity_id: rs.activity_id,
+                    co_id: rs.co_id,
+                    co_code: (_a = coIdToCode.get(rs.co_id)) !== null && _a !== void 0 ? _a : 'CO?',
+                    type_id: rs.type_id,
+                    weight_percentage: Math.round(weight * 100) / 100,
+                    percent_rating: Math.round(pctRating * 100) / 100,
                     weighted_value: Math.round(weightedValue * 100) / 100,
                 });
             }
-            const totalWeighted = weightedRatings.reduce((sum, wr) => sum + wr.weighted_value, 0);
-            const totalRounded = Math.round(totalWeighted * 100) / 100;
+            const coResults = [];
+            let allCosPassed = true;
+            for (const co of courseOutcomes) {
+                const coWeighted = weightedRatings
+                    .filter((wr) => wr.co_id === co.co_id)
+                    .reduce((sum, wr) => sum + wr.weighted_value, 0);
+                const coMax = maxWeightPerCo.get(co.co_id) || 0;
+                const threshold = coMax * transmutation_table_1.CO_PASS_THRESHOLD - 0.01;
+                const passed = coWeighted > threshold;
+                if (!passed)
+                    allCosPassed = false;
+                coResults.push({
+                    co_id: co.co_id,
+                    co_code: co.co_code,
+                    sum_weighted: Math.round(coWeighted * 100) / 100,
+                    max_possible: Math.round(coMax * 100) / 100,
+                    passed,
+                });
+            }
+            const totalWeighted = coResults.reduce((sum, cr) => sum + cr.sum_weighted, 0);
+            const totalRounded = Math.round(totalWeighted);
             const numericalGrade = (0, transmutation_table_1.transmuteGrade)(totalRounded);
-            const remarks = (0, transmutation_table_1.deriveRemarks)(numericalGrade);
+            const remarks = (0, transmutation_table_1.deriveRemarks)(numericalGrade, allCosPassed);
             let fg = await this.finalGradeRepo.findOne({
                 where: { masterlist_id: student.masterlist_id },
             });
@@ -214,6 +247,7 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
                 raw_scores: rawScores,
                 percent_ratings: percentRatings,
                 weighted_ratings: weightedRatings,
+                co_results: coResults,
                 total_weighted_percent: totalRounded,
                 final_numerical_grade: numericalGrade,
                 remarks,
