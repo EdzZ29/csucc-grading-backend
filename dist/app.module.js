@@ -29,7 +29,7 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRoot({
                 type: 'postgres',
                 host: 'localhost',
-                port: 5432,
+                port: 3000,
                 username: 'postgres',
                 password: 'admin',
                 database: 'csucc-grading',
