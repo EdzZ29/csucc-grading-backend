@@ -60,10 +60,11 @@ export class AuthController {
     // Sign the token with the new payload
     const token = await this.jwtService.signAsync(payload);
 
+    // NEW — allows cross-domain cookies on Railway
     response.cookie('jwt', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     });
 
     let redirectUrl = '/';
