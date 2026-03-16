@@ -14,7 +14,6 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    // 1. Extract token from Cookie
     const token = this.extractTokenFromCookie(request);
 
     if (!token) {
@@ -22,13 +21,11 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      // 2. Verify Token
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: 'secret', // ⚠️ Ensure this matches your AuthModule secret
+        // Must match the secret used in auth.module.ts and auth.controller.ts
+        secret: process.env.JWT_SECRET || 'secret',
       });
 
-      // 3.  Assign Payload to Request
-      // This makes req.user.empid available in  controllers
       request['user'] = payload;
     } catch {
       throw new UnauthorizedException();
@@ -37,6 +34,6 @@ export class AuthGuard implements CanActivate {
   }
 
   private extractTokenFromCookie(request: Request): string | undefined {
-    return request.cookies['jwt']; // Reads the 'jwt' cookie
+    return request.cookies['jwt'];
   }
 }

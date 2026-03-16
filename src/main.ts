@@ -1,3 +1,8 @@
+// ── Load .env FIRST before anything else reads process.env ──────────────────
+import * as dotenv from 'dotenv';
+dotenv.config();
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
@@ -21,7 +26,6 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Allow both local dev and the deployed Nuxt frontend
   const allowedOrigins = process.env.FRONTEND_URL
     ? [process.env.FRONTEND_URL, 'http://localhost:7000']
     : ['http://localhost:7000'];
@@ -34,9 +38,9 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  // Railway injects PORT automatically; fallback to 9000 for local dev
   const port = process.env.PORT || 9000;
   await app.listen(port);
   console.log(`Backend running on port ${port}`);
+  console.log(`DB_HOST: ${process.env.DB_HOST}`);  // temp: confirm env is loaded
 }
 bootstrap();

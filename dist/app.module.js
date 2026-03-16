@@ -39,7 +39,7 @@ exports.AppModule = AppModule = __decorate([
                     {
                         type: 'postgres',
                         host: process.env.DB_HOST || 'localhost',
-                        port: parseInt(process.env.DB_PORT, 10) || 5432,
+                        port: parseInt(process.env.DB_PORT, 10) || 3000,
                         username: process.env.DB_USER || 'postgres',
                         password: process.env.DB_PASSWORD || 'admin',
                         database: process.env.DB_NAME || 'csucc-grading',
