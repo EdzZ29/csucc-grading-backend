@@ -14,16 +14,29 @@ import { ObeModule } from './obe/obe.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 3000,
-      username: 'postgres',
-      password: 'admin',
-      database: 'csucc-grading',
-      autoLoadEntities: true,
-      synchronize: true,
-    }),
+    TypeOrmModule.forRoot(
+      process.env.DATABASE_URL
+        ? // ── Production (Railway) — use the full connection URL ──────────────
+          {
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            autoLoadEntities: true,
+            synchronize: true,
+            ssl: { rejectUnauthorized: false },
+          }
+        : // ── Local development — use individual variables ──────────────────
+          {
+            type: 'postgres',
+            host: process.env.DB_HOST || 'localhost',
+            port: parseInt(process.env.DB_PORT, 10) || 5432,
+            username: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || 'admin',
+            database: process.env.DB_NAME || 'csucc-grading',
+            autoLoadEntities: true,
+            synchronize: true,
+            ssl: false,
+          },
+    ),
     AuthModule,
     MasterlistModule,
     EmployeeModule,

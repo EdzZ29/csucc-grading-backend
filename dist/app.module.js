@@ -26,16 +26,27 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forRoot({
-                type: 'postgres',
-                host: 'localhost',
-                port: 3000,
-                username: 'postgres',
-                password: 'admin',
-                database: 'csucc-grading',
-                autoLoadEntities: true,
-                synchronize: true,
-            }),
+            typeorm_1.TypeOrmModule.forRoot(process.env.DATABASE_URL
+                ?
+                    {
+                        type: 'postgres',
+                        url: process.env.DATABASE_URL,
+                        autoLoadEntities: true,
+                        synchronize: true,
+                        ssl: { rejectUnauthorized: false },
+                    }
+                :
+                    {
+                        type: 'postgres',
+                        host: process.env.DB_HOST || 'localhost',
+                        port: parseInt(process.env.DB_PORT, 10) || 5432,
+                        username: process.env.DB_USER || 'postgres',
+                        password: process.env.DB_PASSWORD || 'admin',
+                        database: process.env.DB_NAME || 'csucc-grading',
+                        autoLoadEntities: true,
+                        synchronize: true,
+                        ssl: false,
+                    }),
             auth_module_1.AuthModule,
             masterlist_module_1.MasterlistModule,
             employee_module_1.EmployeeModule,

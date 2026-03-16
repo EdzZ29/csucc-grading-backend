@@ -55,22 +55,6 @@ const seedEmployees = async () => {
                 isactive: true,
             },
             {
-                firstname: 'Ryan',
-                lastname: 'Cuarez',
-                email: 'ryan.cuarez@csucc.edu.ph',
-                role: employee_entity_1.EmpRole.INSTRUCTOR,
-                password: hashedPassword,
-                isactive: true,
-            },
-            {
-                firstname: 'Joseph',
-                lastname: 'Vistal',
-                email: 'joseph.vistal@csucc.edu.ph',
-                role: employee_entity_1.EmpRole.INSTRUCTOR,
-                password: hashedPassword,
-                isactive: true,
-            },
-            {
                 firstname: 'Maria',
                 lastname: 'Clara',
                 email: 'dean@csucc.edu.ph',

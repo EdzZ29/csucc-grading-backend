@@ -19,13 +19,18 @@ async function bootstrap() {
     }));
     app.use(cookieParser());
     app.useGlobalFilters(new forbidden_exception_filter_1.AllExceptionsFilter());
+    const allowedOrigins = process.env.FRONTEND_URL
+        ? [process.env.FRONTEND_URL, 'http://localhost:7000']
+        : ['http://localhost:7000'];
     app.enableCors({
-        origin: ['http://localhost:7000'],
+        origin: allowedOrigins,
         credentials: true,
     });
     app.use(bodyParser.json({ limit: '50mb' }));
     app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
-    await app.listen(9000);
+    const port = process.env.PORT || 9000;
+    await app.listen(port);
+    console.log(`Backend running on port ${port}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
