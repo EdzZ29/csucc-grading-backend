@@ -7,20 +7,32 @@ import { AssessmentType } from '../obe/assessment-type.entity';
 dotenv.config();
 
 const seedAssessmentTypes = async () => {
-  // ✅ Explicitly define the full DataSourceOptions
-  const AppDataSource = new DataSource({
-    type: 'postgres', // This resolves the 'SpannerConnectionOptions' error
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 3000,
-    username: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'admin',
-    database: process.env.DB_DATABASE || 'csucc-grading',
-    entities: [AssessmentType],
-    synchronize: false,
-  });
+  // ── Use DATABASE_URL on Railway, fall back to individual vars locally ──
+  const AppDataSource = new DataSource(
+    process.env.DATABASE_URL
+      ? {
+          type: 'postgres',
+          url: process.env.DATABASE_URL,
+          entities: [AssessmentType],
+          synchronize: false,
+          ssl: { rejectUnauthorized: false },
+        }
+      : {
+          type: 'postgres',
+          host: process.env.DB_HOST || 'localhost',
+          port: parseInt(process.env.DB_PORT) || 3000,
+          username: process.env.DB_USER || 'postgres',
+          password: process.env.DB_PASSWORD || 'admin',
+          database: process.env.DB_NAME || 'csucc-grading',
+          entities: [AssessmentType],
+          synchronize: false,
+          ssl: false,
+        },
+  );
 
   try {
     await AppDataSource.initialize();
+    console.log('✅ Connected to database');
     const repo = AppDataSource.getRepository(AssessmentType);
 
     const types = [
