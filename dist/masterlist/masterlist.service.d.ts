@@ -12,6 +12,7 @@ export declare class MasterlistService {
     getUniqueSubjectsCount(): Promise<number>;
     findAllForUser(user: Employee): Promise<Masterlist[]>;
     findOneForUser(id: number, user: Employee): Promise<Masterlist>;
+    getAllClassesForAdmin(): Promise<Masterlist[]>;
     importCsv(data: ImportMasterlistDto): Promise<{
         success: boolean;
         successCount: number;

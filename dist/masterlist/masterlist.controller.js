@@ -26,17 +26,12 @@ let MasterlistController = class MasterlistController {
         const count = await this.masterlistService.getUniqueSubjectsCount();
         return { count };
     }
+    getAllClasses() {
+        return this.masterlistService.getAllClassesForAdmin();
+    }
     async findAll(req) {
         const user = req.user;
         return this.masterlistService.findAllForUser(user);
-    }
-    async findOne(id, req) {
-        const user = req.user;
-        return this.masterlistService.findOneForUser(id, user);
-    }
-    async importCsv(importDto) {
-        console.log('Processing CSV Import...');
-        return this.masterlistService.importCsv(importDto);
     }
     async findByYearAndSem(sy, sem, req) {
         const user = req.user;
@@ -50,6 +45,14 @@ let MasterlistController = class MasterlistController {
             return this.masterlistService.findBySYandSem(sy, sem);
         }
     }
+    async importCsv(importDto) {
+        console.log('Processing CSV Import...');
+        return this.masterlistService.importCsv(importDto);
+    }
+    async findOne(id, req) {
+        const user = req.user;
+        return this.masterlistService.findOneForUser(id, user);
+    }
 };
 exports.MasterlistController = MasterlistController;
 __decorate([
@@ -60,6 +63,12 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MasterlistController.prototype, "getUniqueSubjectsCount", null);
 __decorate([
+    (0, common_1.Get)('all-classes'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MasterlistController.prototype, "getAllClasses", null);
+__decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.Get)('all'),
     __param(0, (0, common_1.Req)()),
@@ -67,22 +76,6 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MasterlistController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Req)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
-    __metadata("design:returntype", Promise)
-], MasterlistController.prototype, "findOne", null);
-__decorate([
-    (0, common_1.Post)('import'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [import_masterlist_dto_1.ImportMasterlistDto]),
-    __metadata("design:returntype", Promise)
-], MasterlistController.prototype, "importCsv", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
     (0, common_1.Get)('filter/:sy/:sem'),
@@ -103,6 +96,22 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Number]),
     __metadata("design:returntype", Promise)
 ], MasterlistController.prototype, "findBySYSEMQuery", null);
+__decorate([
+    (0, common_1.Post)('import'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [import_masterlist_dto_1.ImportMasterlistDto]),
+    __metadata("design:returntype", Promise)
+], MasterlistController.prototype, "importCsv", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], MasterlistController.prototype, "findOne", null);
 exports.MasterlistController = MasterlistController = __decorate([
     (0, common_1.Controller)('masterlist'),
     __metadata("design:paramtypes", [masterlist_service_1.MasterlistService])

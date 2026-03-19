@@ -16,7 +16,7 @@ export class MasterlistService {
   ) {}
 
   // ==========================================
-  // CORE QUERIES (Fixes Controller Errors)
+  // CORE QUERIES
   // ==========================================
 
   async findByYearAndSem(sy: string, sem: string, user: Employee): Promise<Masterlist[]> {
@@ -24,11 +24,9 @@ export class MasterlistService {
       .createQueryBuilder('masterlist')
       .leftJoinAndSelect('masterlist.employee', 'employee');
 
-    // 1. Filter by School Year and Semester
     if (sy && sy !== 'null') query.andWhere('masterlist.sy = :sy', { sy });
     if (sem && sem !== 'null') query.andWhere('masterlist.sem = :sem', { sem });
 
-    // 2. Security: Instructors only see their own data
     const isAdmin = user.role && user.role.toUpperCase() === 'ADMIN';
     if (!isAdmin) {
       query.andWhere('masterlist.empid = :empid', { empid: user.empid });
@@ -88,8 +86,16 @@ export class MasterlistService {
     return record;
   }
 
+  // ── Dean/Admin: returns ALL classes across ALL instructors ──────────
+  async getAllClassesForAdmin(): Promise<Masterlist[]> {
+    return this.masterlistRepo.find({       // ← fixed: masterlistRepo not masterlistRepository
+      relations: ['employee'],
+      order: { masterlist_id: 'DESC' },
+    });
+  }
+
   // ==========================================
-  // CSV IMPORT LOGIC (Updated Schema)
+  // CSV IMPORT LOGIC
   // ==========================================
 
   async importCsv(data: ImportMasterlistDto) {

@@ -79,6 +79,12 @@ let MasterlistService = class MasterlistService {
         }
         return record;
     }
+    async getAllClassesForAdmin() {
+        return this.masterlistRepo.find({
+            relations: ['employee'],
+            order: { masterlist_id: 'DESC' },
+        });
+    }
     async importCsv(data) {
         const { headers, rows } = data;
         const successEntities = [];

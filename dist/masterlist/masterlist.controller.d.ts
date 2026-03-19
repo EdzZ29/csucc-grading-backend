@@ -8,8 +8,10 @@ export declare class MasterlistController {
     getUniqueSubjectsCount(): Promise<{
         count: number;
     }>;
+    getAllClasses(): Promise<Masterlist[]>;
     findAll(req: Request): Promise<Masterlist[]>;
-    findOne(id: number, req: Request): Promise<Masterlist>;
+    findByYearAndSem(sy: string, sem: string, req: Request): Promise<Masterlist[]>;
+    findBySYSEMQuery(sy: string, sem: string, employeeId?: number): Promise<Masterlist[]>;
     importCsv(importDto: ImportMasterlistDto): Promise<{
         success: boolean;
         successCount: number;
@@ -20,6 +22,5 @@ export declare class MasterlistController {
             data: any;
         }[];
     }>;
-    findByYearAndSem(sy: string, sem: string, req: Request): Promise<Masterlist[]>;
-    findBySYSEMQuery(sy: string, sem: string, employeeId?: number): Promise<Masterlist[]>;
+    findOne(id: number, req: Request): Promise<Masterlist>;
 }

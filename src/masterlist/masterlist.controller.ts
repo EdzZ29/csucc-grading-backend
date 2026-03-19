@@ -20,13 +20,21 @@ import { ImportMasterlistDto } from './dtos/import-masterlist.dto';
 
 @Controller('masterlist')
 export class MasterlistController {
-  constructor(private readonly masterlistService: MasterlistService) { }
+  constructor(private readonly masterlistService: MasterlistService) {}
 
   @UseGuards(AuthGuard)
   @Get('count/unique-subjects')
   async getUniqueSubjectsCount() {
     const count = await this.masterlistService.getUniqueSubjectsCount();
     return { count };
+  }
+
+  // ── Dean/Admin: ALL classes across ALL instructors ──────────────────
+  // MUST be declared before @Get(':id') to avoid NestJS matching
+  // "all-classes" as an :id parameter.
+  @Get('all-classes')
+  getAllClasses(): Promise<Masterlist[]> {
+    return this.masterlistService.getAllClassesForAdmin();
   }
 
   @UseGuards(AuthGuard)
@@ -36,25 +44,7 @@ export class MasterlistController {
     return this.masterlistService.findAllForUser(user);
   }
 
-  @UseGuards(AuthGuard)
-  @Get(':id')
-  async findOne(
-    @Param('id') id: number,
-    @Req() req: Request,
-  ): Promise<Masterlist> {
-    const user = req.user as Employee;
-    return this.masterlistService.findOneForUser(id, user);
-  }
-
-  // ✅ Updated Import Route using DTO
-  @Post('import')
-  async importCsv(@Body() importDto: ImportMasterlistDto) {
-    console.log('Processing CSV Import...');
-    return this.masterlistService.importCsv(importDto);
-  }
-
-  //  This is the critical route for Grading Module
-  // It fetches classes filtered by SY/SEM but restricted to the logged-in employee
+  // ── This is the critical route for Grading Module ──────────────────
   @UseGuards(AuthGuard, RolesGuard)
   @Get('filter/:sy/:sem')
   async findByYearAndSem(
@@ -63,7 +53,6 @@ export class MasterlistController {
     @Req() req: Request,
   ): Promise<Masterlist[]> {
     const user = req.user as Employee;
-    // Ensure your Service has findByYearAndSem(sy, sem, user)
     return this.masterlistService.findByYearAndSem(sy, sem, user);
   }
 
@@ -75,14 +64,27 @@ export class MasterlistController {
     @Query('empid') employeeId?: number,
   ): Promise<Masterlist[]> {
     if (employeeId) {
-      return this.masterlistService.findBySYSemAndEmployee(
-        sy,
-        sem,
-        Number(employeeId),
-      );
+      return this.masterlistService.findBySYSemAndEmployee(sy, sem, Number(employeeId));
     } else {
-      // Admin fallback or specific query use case
       return this.masterlistService.findBySYandSem(sy, sem);
     }
+  }
+
+  // ── CSV Import ──────────────────────────────────────────────────────
+  @Post('import')
+  async importCsv(@Body() importDto: ImportMasterlistDto) {
+    console.log('Processing CSV Import...');
+    return this.masterlistService.importCsv(importDto);
+  }
+
+  // ── MUST be last — catches any numeric :id ──────────────────────────
+  @UseGuards(AuthGuard)
+  @Get(':id')
+  async findOne(
+    @Param('id') id: number,
+    @Req() req: Request,
+  ): Promise<Masterlist> {
+    const user = req.user as Employee;
+    return this.masterlistService.findOneForUser(id, user);
   }
 }
