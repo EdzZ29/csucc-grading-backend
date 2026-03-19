@@ -15,15 +15,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PredictionController = void 0;
 const common_1 = require("@nestjs/common");
 const prediction_service_1 = require("./prediction.service");
+const auth_guard_1 = require("../auth/auth.guard");
 let PredictionController = class PredictionController {
     constructor(predictionService) {
         this.predictionService = predictionService;
     }
-    async trainModel() {
+    trainModel() {
         return this.predictionService.trainModel();
     }
-    async getRisk(id) {
+    getRisk(id) {
         return this.predictionService.predictRisk(id);
+    }
+    getBatch(subjcode, section, sy, sem) {
+        return this.predictionService.predictBatch(subjcode, section, sy, sem);
+    }
+    getHeatmap(subjcode, section, sy, sem) {
+        return this.predictionService.getCoHeatmap(subjcode, section, sy, sem);
+    }
+    getTrajectory(subjcode, section, sy, sem) {
+        return this.predictionService.getTrajectory(subjcode, section, sy, sem);
     }
 };
 exports.PredictionController = PredictionController;
@@ -31,17 +41,48 @@ __decorate([
     (0, common_1.Post)('train'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], PredictionController.prototype, "trainModel", null);
 __decorate([
     (0, common_1.Get)('risk/:id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], PredictionController.prototype, "getRisk", null);
+__decorate([
+    (0, common_1.Get)('batch'),
+    __param(0, (0, common_1.Query)('subjcode')),
+    __param(1, (0, common_1.Query)('section')),
+    __param(2, (0, common_1.Query)('sy')),
+    __param(3, (0, common_1.Query)('sem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], PredictionController.prototype, "getBatch", null);
+__decorate([
+    (0, common_1.Get)('heatmap'),
+    __param(0, (0, common_1.Query)('subjcode')),
+    __param(1, (0, common_1.Query)('section')),
+    __param(2, (0, common_1.Query)('sy')),
+    __param(3, (0, common_1.Query)('sem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], PredictionController.prototype, "getHeatmap", null);
+__decorate([
+    (0, common_1.Get)('trajectory'),
+    __param(0, (0, common_1.Query)('subjcode')),
+    __param(1, (0, common_1.Query)('section')),
+    __param(2, (0, common_1.Query)('sy')),
+    __param(3, (0, common_1.Query)('sem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], PredictionController.prototype, "getTrajectory", null);
 exports.PredictionController = PredictionController = __decorate([
     (0, common_1.Controller)('prediction'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:paramtypes", [prediction_service_1.PredictionService])
 ], PredictionController);
 //# sourceMappingURL=prediction.controller.js.map

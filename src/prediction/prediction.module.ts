@@ -1,18 +1,26 @@
 import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios'; //  Required for HttpService
-import { TypeOrmModule } from '@nestjs/typeorm'; //  Required for MasterlistRepository
+import { HttpModule } from '@nestjs/axios';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { PredictionService } from './prediction.service';
 import { PredictionController } from './prediction.controller';
-import { Masterlist } from '../masterlist/masterlist.entity'; // Import entity
-import { AuthGuard } from 'src/auth/auth.guard';
+import { Masterlist } from '../masterlist/masterlist.entity';
+import { RawScore } from '../raw-score/raw-score.entity';
+import { FinalGrade } from '../obe/final-grade.entity';
+import { ClassActivity } from '../obe/class-activity.entity';
+import { AssessmentType } from '../obe/assessment-type.entity';
+import { AuthGuard } from '../auth/auth.guard';
 import { JwtModule } from '@nestjs/jwt';
-import { RawScore } from 'src/raw-score/raw-score.entity';
-import { FinalGrade } from 'src/final-grade/final-grade.entity';
 
 @Module({
   imports: [
     HttpModule,
-    TypeOrmModule.forFeature([Masterlist, RawScore, FinalGrade]),
+    TypeOrmModule.forFeature([
+      Masterlist,
+      RawScore,
+      FinalGrade,
+      ClassActivity,
+      AssessmentType,
+    ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',
       signOptions: { expiresIn: '1d' },

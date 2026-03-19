@@ -1,24 +1,56 @@
-import { Controller, Post, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { PredictionService } from './prediction.service';
-// import { AuthGuard } from '../auth/auth.guard'; // Uncomment if you have auth
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('prediction')
+@UseGuards(AuthGuard)
 export class PredictionController {
   constructor(private readonly predictionService: PredictionService) {}
 
-  // Route: POST /api/prediction/train
-  // Used by the "Train AI Model" button
-  // @UseGuards(AuthGuard)
+  // POST /api/prediction/train
   @Post('train')
-  async trainModel() {
+  trainModel() {
     return this.predictionService.trainModel();
   }
 
-  // Route: GET /api/prediction/risk/:id
-  // Used by the "Check Risk" button
-  // @UseGuards(AuthGuard)
+  // GET /api/prediction/risk/:masterlistId
   @Get('risk/:id')
-  async getRisk(@Param('id') id: number) {
+  getRisk(@Param('id') id: number) {
     return this.predictionService.predictRisk(id);
+  }
+
+  // GET /api/prediction/batch?subjcode=CS101&section=A&sy=2025-2026&sem=1st
+  @Get('batch')
+  getBatch(
+    @Query('subjcode') subjcode: string,
+    @Query('section')  section:  string,
+    @Query('sy')       sy:       string,
+    @Query('sem')      sem:      string,
+  ) {
+    return this.predictionService.predictBatch(subjcode, section, sy, sem);
+  }
+
+  // GET /api/prediction/heatmap?subjcode=CS101&section=A&sy=2025-2026&sem=1st
+  // Returns CO attainment grid: students × course outcomes with pass/fail coloring
+  @Get('heatmap')
+  getHeatmap(
+    @Query('subjcode') subjcode: string,
+    @Query('section')  section:  string,
+    @Query('sy')       sy:       string,
+    @Query('sem')      sem:      string,
+  ) {
+    return this.predictionService.getCoHeatmap(subjcode, section, sy, sem);
+  }
+
+  // GET /api/prediction/trajectory?subjcode=CS101&section=A&sy=2025-2026&sem=1st
+  // Returns per-student assessment score timeline for trend visualization
+  @Get('trajectory')
+  getTrajectory(
+    @Query('subjcode') subjcode: string,
+    @Query('section')  section:  string,
+    @Query('sy')       sy:       string,
+    @Query('sem')      sem:      string,
+  ) {
+    return this.predictionService.getTrajectory(subjcode, section, sy, sem);
   }
 }

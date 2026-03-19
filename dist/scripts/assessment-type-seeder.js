@@ -5,18 +5,28 @@ const dotenv = require("dotenv");
 const assessment_type_entity_1 = require("../obe/assessment-type.entity");
 dotenv.config();
 const seedAssessmentTypes = async () => {
-    const AppDataSource = new typeorm_1.DataSource({
-        type: 'postgres',
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT) || 3000,
-        username: process.env.DB_USERNAME || 'postgres',
-        password: process.env.DB_PASSWORD || 'admin',
-        database: process.env.DB_DATABASE || 'csucc-grading',
-        entities: [assessment_type_entity_1.AssessmentType],
-        synchronize: false,
-    });
+    const AppDataSource = new typeorm_1.DataSource(process.env.DATABASE_URL
+        ? {
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            entities: [assessment_type_entity_1.AssessmentType],
+            synchronize: false,
+            ssl: { rejectUnauthorized: false },
+        }
+        : {
+            type: 'postgres',
+            host: process.env.DB_HOST || 'localhost',
+            port: parseInt(process.env.DB_PORT) || 3000,
+            username: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || 'admin',
+            database: process.env.DB_NAME || 'csucc-grading',
+            entities: [assessment_type_entity_1.AssessmentType],
+            synchronize: false,
+            ssl: false,
+        });
     try {
         await AppDataSource.initialize();
+        console.log('✅ Connected to database');
         const repo = AppDataSource.getRepository(assessment_type_entity_1.AssessmentType);
         const types = [
             { name: 'Case Analysis', code: 'CA' },

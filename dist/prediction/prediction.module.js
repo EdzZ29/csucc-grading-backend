@@ -13,10 +13,12 @@ const typeorm_1 = require("@nestjs/typeorm");
 const prediction_service_1 = require("./prediction.service");
 const prediction_controller_1 = require("./prediction.controller");
 const masterlist_entity_1 = require("../masterlist/masterlist.entity");
+const raw_score_entity_1 = require("../raw-score/raw-score.entity");
+const final_grade_entity_1 = require("../obe/final-grade.entity");
+const class_activity_entity_1 = require("../obe/class-activity.entity");
+const assessment_type_entity_1 = require("../obe/assessment-type.entity");
 const auth_guard_1 = require("../auth/auth.guard");
 const jwt_1 = require("@nestjs/jwt");
-const raw_score_entity_1 = require("../raw-score/raw-score.entity");
-const final_grade_entity_1 = require("../final-grade/final-grade.entity");
 let PredictionModule = class PredictionModule {
 };
 exports.PredictionModule = PredictionModule;
@@ -24,7 +26,13 @@ exports.PredictionModule = PredictionModule = __decorate([
     (0, common_1.Module)({
         imports: [
             axios_1.HttpModule,
-            typeorm_1.TypeOrmModule.forFeature([masterlist_entity_1.Masterlist, raw_score_entity_1.RawScore, final_grade_entity_1.FinalGrade]),
+            typeorm_1.TypeOrmModule.forFeature([
+                masterlist_entity_1.Masterlist,
+                raw_score_entity_1.RawScore,
+                final_grade_entity_1.FinalGrade,
+                class_activity_entity_1.ClassActivity,
+                assessment_type_entity_1.AssessmentType,
+            ]),
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_SECRET || 'secret',
                 signOptions: { expiresIn: '1d' },
