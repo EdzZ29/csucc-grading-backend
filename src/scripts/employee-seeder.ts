@@ -43,6 +43,14 @@ const seedEmployees = async () => {
     await AppDataSource.initialize();
     console.log('📦 Database connected for Employee seeding...');
 
+    try {
+      // Fix PostgreSQL enum for Chairperson role dynamically
+      await AppDataSource.query(`ALTER TYPE employee_role_enum RENAME VALUE 'Chancellor' TO 'Chairperson'`);
+      console.log('✅ Migrated enum Chancellor to Chairperson');
+    } catch (e) {
+      // Ignore error if already renamed or type does not exist
+    }
+
     const employeeRepo = AppDataSource.getRepository(Employee);
 
     // 3. Prepare Data
@@ -77,8 +85,8 @@ const seedEmployees = async () => {
       {
         firstname: 'Andres',
         lastname: 'Bonifacio',
-        email: 'chancellor@csucc.edu.ph',
-        role: EmpRole.CHANCELLOR,
+        email: 'chairperson@csucc.edu.ph',
+        role: EmpRole.CHAIRPERSON,
         password: hashedPassword,
         isactive: true,
       },

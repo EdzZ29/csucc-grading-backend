@@ -5,7 +5,7 @@ export declare enum EmpRole {
     ADMIN = "Admin",
     INSTRUCTOR = "Instructor",
     DEAN = "Dean",
-    CHANCELLOR = "Chancellor",
+    CHAIRPERSON = "Chairperson",
     GUIDANCE = "Guidance"
 }
 export declare class Employee {

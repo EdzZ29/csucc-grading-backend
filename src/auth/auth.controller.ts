@@ -71,7 +71,7 @@ export class AuthController {
     switch (user.role) {
       case EmpRole.ADMIN: redirectUrl = 'auth/admin-dashboard'; break;
       case EmpRole.INSTRUCTOR: redirectUrl = 'auth/instructor-dashboard'; break;
-      case EmpRole.CHANCELLOR: redirectUrl = 'auth/chancellor-dashboard'; break;
+      case EmpRole.CHAIRPERSON: redirectUrl = 'auth/chairperson-dashboard'; break;
       case EmpRole.GUIDANCE: redirectUrl = 'auth/guidance-dashboard'; break;
       case EmpRole.DEAN: redirectUrl = 'auth/dean-dashboard'; break;
     }

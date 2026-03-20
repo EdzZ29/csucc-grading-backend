@@ -27,7 +27,7 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Role should not be empty' })
   @IsEnum(EmpRole, {
     message:
-      'Role must be one of: Admin, Instructor, Dean, Chancellor, Guidance',
+      'Role must be one of: Admin, Instructor, Dean, Chairperson, Guidance',
   })
   role: EmpRole;
 }

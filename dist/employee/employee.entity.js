@@ -19,7 +19,7 @@ var EmpRole;
     EmpRole["ADMIN"] = "Admin";
     EmpRole["INSTRUCTOR"] = "Instructor";
     EmpRole["DEAN"] = "Dean";
-    EmpRole["CHANCELLOR"] = "Chancellor";
+    EmpRole["CHAIRPERSON"] = "Chairperson";
     EmpRole["GUIDANCE"] = "Guidance";
 })(EmpRole || (exports.EmpRole = EmpRole = {}));
 let Employee = class Employee {

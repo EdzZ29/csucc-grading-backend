@@ -47,7 +47,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsNotEmpty)({ message: 'Role should not be empty' }),
     (0, class_validator_1.IsEnum)(employee_entity_1.EmpRole, {
-        message: 'Role must be one of: Admin, Instructor, Dean, Chancellor, Guidance',
+        message: 'Role must be one of: Admin, Instructor, Dean, Chairperson, Guidance',
     }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "role", void 0);

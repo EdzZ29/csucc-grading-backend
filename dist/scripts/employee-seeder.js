@@ -35,6 +35,12 @@ const seedEmployees = async () => {
     try {
         await AppDataSource.initialize();
         console.log('📦 Database connected for Employee seeding...');
+        try {
+            await AppDataSource.query(`ALTER TYPE employee_role_enum RENAME VALUE 'Chancellor' TO 'Chairperson'`);
+            console.log('✅ Migrated enum Chancellor to Chairperson');
+        }
+        catch (e) {
+        }
         const employeeRepo = AppDataSource.getRepository(employee_entity_1.Employee);
         const hashedPassword = await bcrypt.hash('123456', 10);
         const employeesToSeed = [
@@ -65,8 +71,8 @@ const seedEmployees = async () => {
             {
                 firstname: 'Andres',
                 lastname: 'Bonifacio',
-                email: 'chancellor@csucc.edu.ph',
-                role: employee_entity_1.EmpRole.CHANCELLOR,
+                email: 'chairperson@csucc.edu.ph',
+                role: employee_entity_1.EmpRole.CHAIRPERSON,
                 password: hashedPassword,
                 isactive: true,
             },

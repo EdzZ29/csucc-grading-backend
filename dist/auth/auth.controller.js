@@ -55,8 +55,8 @@ let AuthController = class AuthController {
             case employee_entity_1.EmpRole.INSTRUCTOR:
                 redirectUrl = 'auth/instructor-dashboard';
                 break;
-            case employee_entity_1.EmpRole.CHANCELLOR:
-                redirectUrl = 'auth/chancellor-dashboard';
+            case employee_entity_1.EmpRole.CHAIRPERSON:
+                redirectUrl = 'auth/chairperson-dashboard';
                 break;
             case employee_entity_1.EmpRole.GUIDANCE:
                 redirectUrl = 'auth/guidance-dashboard';
