@@ -62,6 +62,7 @@ export declare class ClassActivityService {
     saveGradebook(dto: SaveGradebookDto): Promise<{
         success: boolean;
         message: string;
+        activities: any[];
     }>;
     deleteActivity(activityId: number): Promise<{
         success: boolean;

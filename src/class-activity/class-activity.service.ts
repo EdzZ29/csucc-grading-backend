@@ -125,6 +125,8 @@ export class ClassActivityService {
       resolvedTypeId = assessmentType?.type_id ?? null;
     }
 
+    const returnedActivities = [];
+
     for (const actDto of dto.activities ?? []) {
       let activity: ClassActivity | null = null;
 
@@ -183,10 +185,15 @@ export class ClassActivityService {
       }
 
       if (scoresToSave.length > 0) await this.scoreRepo.save(scoresToSave);
+      
+      returnedActivities.push({
+        name: savedActivity.activity_name,
+        activity_id: savedActivity.activity_id
+      });
     }
 
     this.logger.log('[SUCCESS] Gradebook saved.');
-    return { success: true, message: 'Scores saved successfully' };
+    return { success: true, message: 'Scores saved successfully', activities: returnedActivities };
   }
 
   async deleteActivity(activityId: number) {

@@ -62,6 +62,7 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
             });
             resolvedTypeId = (_a = assessmentType === null || assessmentType === void 0 ? void 0 : assessmentType.type_id) !== null && _a !== void 0 ? _a : null;
         }
+        const returnedActivities = [];
         for (const actDto of (_b = dto.activities) !== null && _b !== void 0 ? _b : []) {
             let activity = null;
             if (actDto.activity_id) {
@@ -115,9 +116,13 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
             }
             if (scoresToSave.length > 0)
                 await this.scoreRepo.save(scoresToSave);
+            returnedActivities.push({
+                name: savedActivity.activity_name,
+                activity_id: savedActivity.activity_id
+            });
         }
         this.logger.log('[SUCCESS] Gradebook saved.');
-        return { success: true, message: 'Scores saved successfully' };
+        return { success: true, message: 'Scores saved successfully', activities: returnedActivities };
     }
     async deleteActivity(activityId) {
         await this.scoreRepo.delete({ activity: { activity_id: activityId } });

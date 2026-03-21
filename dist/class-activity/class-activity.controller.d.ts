@@ -8,6 +8,7 @@ export declare class ClassActivityController {
     saveGradebook(dto: SaveGradebookDto): Promise<{
         success: boolean;
         message: string;
+        activities: any[];
     }>;
     saveFinalGrades(dto: SaveGradebookDto): Promise<{
         success: boolean;
