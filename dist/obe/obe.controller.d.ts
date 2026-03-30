@@ -2,7 +2,7 @@ import { ObeService } from './obe.service';
 export declare class ObeController {
     private readonly obeService;
     constructor(obeService: ObeService);
-    getTypes(): Promise<import("./assessment-type.entity").AssessmentType[]>;
+    getTypes(req: any): Promise<import("./assessment-type.entity").AssessmentType[]>;
     batchSave(payload: any, req: any): Promise<({
         empid: number;
         subjcode: string;

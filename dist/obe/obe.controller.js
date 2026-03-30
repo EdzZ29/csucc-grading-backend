@@ -19,8 +19,9 @@ let ObeController = class ObeController {
     constructor(obeService) {
         this.obeService = obeService;
     }
-    async getTypes() {
-        return await this.obeService.findAllAssessmentTypes();
+    async getTypes(req) {
+        const empid = req.query.empid || (req.user && req.user.empid);
+        return await this.obeService.findAllAssessmentTypes(empid);
     }
     async batchSave(payload, req) {
         const empid = payload.empid || (req.user && req.user.empid);
@@ -70,8 +71,9 @@ let ObeController = class ObeController {
 exports.ObeController = ObeController;
 __decorate([
     (0, common_1.Get)('assessment-types'),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ObeController.prototype, "getTypes", null);
 __decorate([

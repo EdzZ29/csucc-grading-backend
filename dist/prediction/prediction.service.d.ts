@@ -5,9 +5,9 @@ import { FinalGrade } from '../obe/final-grade.entity';
 import { Masterlist } from '../masterlist/masterlist.entity';
 export declare class PredictionService {
     private readonly httpService;
-    private rawScoreRepo;
-    private finalGradeRepo;
-    private masterlistRepo;
+    private readonly rawScoreRepo;
+    private readonly finalGradeRepo;
+    private readonly masterlistRepo;
     private readonly logger;
     constructor(httpService: HttpService, rawScoreRepo: Repository<RawScore>, finalGradeRepo: Repository<FinalGrade>, masterlistRepo: Repository<Masterlist>);
     trainModel(): Promise<any>;

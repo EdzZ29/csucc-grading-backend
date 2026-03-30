@@ -26,6 +26,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 100 }),
     __metadata("design:type", String)
 ], AssessmentType.prototype, "name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'int', nullable: true }),
+    __metadata("design:type", Number)
+], AssessmentType.prototype, "empid", void 0);
 exports.AssessmentType = AssessmentType = __decorate([
     (0, typeorm_1.Entity)('assessment_types')
 ], AssessmentType);

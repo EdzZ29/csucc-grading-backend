@@ -130,12 +130,34 @@ export class ClassActivityService {
     for (const actDto of dto.activities ?? []) {
       let activity: ClassActivity | null = null;
 
+      // 1. Try to find by explicit activity_id
       if (actDto.activity_id) {
         activity = await this.activityRepo.findOne({
           where: { activity_id: actDto.activity_id },
         });
       }
 
+      // 2. If no activity_id or not found, look for existing activity
+      //    with same name + CO + type + subject + section to prevent duplicates
+      //    (e.g. rubric panels that lost their activity_id reference)
+      if (!activity && actDto.name && actDto.co_id != null && actDto.type_id != null) {
+        activity = await this.activityRepo.findOne({
+          where: {
+            subjcode: dto.subjcode,
+            section: dto.section,
+            activity_name: actDto.name.trim(),
+            co_id: actDto.co_id,
+            type_id: actDto.type_id,
+          },
+        });
+        if (activity) {
+          this.logger.log(
+            `[DEDUP] Found existing activity "${actDto.name}" (ID ${activity.activity_id}) — updating instead of creating duplicate`,
+          );
+        }
+      }
+
+      // 3. Only create new if truly not found
       if (!activity) {
         activity = this.activityRepo.create({
           subjcode: dto.subjcode,
@@ -156,6 +178,47 @@ export class ClassActivityService {
       else if (resolvedTypeId != null) activity.type_id = resolvedTypeId;
 
       const savedActivity = await this.activityRepo.save(activity);
+
+      // ── Dedup cleanup: merge scores from any duplicate activities ──
+      // Find other activities with the same fingerprint and merge them
+      const duplicates = await this.activityRepo.find({
+        where: {
+          subjcode: dto.subjcode,
+          section: dto.section,
+          activity_name: savedActivity.activity_name,
+          co_id: savedActivity.co_id,
+          type_id: savedActivity.type_id,
+        },
+      });
+      for (const dup of duplicates) {
+        if (dup.activity_id === savedActivity.activity_id) continue;
+
+        // Move scores from the duplicate to the canonical activity
+        const dupScores = await this.scoreRepo.find({
+          where: { activity: { activity_id: dup.activity_id } },
+          relations: ['student'],
+        });
+        for (const dupScore of dupScores) {
+          // Only import if canonical doesn't already have a score for this student
+          const existingOnCanonical = await this.scoreRepo.findOne({
+            where: {
+              activity: { activity_id: savedActivity.activity_id },
+              masterlist_id: dupScore.masterlist_id,
+            },
+          });
+          if (!existingOnCanonical) {
+            dupScore.activity = savedActivity;
+            await this.scoreRepo.save(dupScore);
+          } else {
+            await this.scoreRepo.remove(dupScore);
+          }
+        }
+        // Delete the duplicate activity
+        await this.activityRepo.delete(dup.activity_id);
+        this.logger.log(
+          `[DEDUP] Removed duplicate activity ID ${dup.activity_id} ("${dup.activity_name}")`,
+        );
+      }
 
       const existingScores = await this.scoreRepo.find({
         where: { activity: { activity_id: savedActivity.activity_id } },

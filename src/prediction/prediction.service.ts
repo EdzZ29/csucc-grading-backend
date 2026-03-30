@@ -1,14 +1,14 @@
 /* eslint-disable prettier/prettier */
 import {
   Injectable,
-  InternalServerErrorException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RawScore } from '../raw-score/raw-score.entity';
+import { RawScore }   from '../raw-score/raw-score.entity';
 import { FinalGrade } from '../obe/final-grade.entity';
 import { Masterlist } from '../masterlist/masterlist.entity';
 
@@ -20,19 +20,17 @@ export class PredictionService {
 
   constructor(
     private readonly httpService: HttpService,
-    @InjectRepository(RawScore)
-    private rawScoreRepo: Repository<RawScore>,
-    @InjectRepository(FinalGrade)
-    private finalGradeRepo: Repository<FinalGrade>,
-    @InjectRepository(Masterlist)
-    private masterlistRepo: Repository<Masterlist>,
+    @InjectRepository(RawScore)   private readonly rawScoreRepo:   Repository<RawScore>,
+    @InjectRepository(FinalGrade) private readonly finalGradeRepo: Repository<FinalGrade>,
+    @InjectRepository(Masterlist) private readonly masterlistRepo:  Repository<Masterlist>,
   ) {}
 
   // ══════════════════════════════════════════════════════════════════
-  // TRAIN
+  //  TRAIN — sends raw OBE data + final grade to Python pipeline
   // ══════════════════════════════════════════════════════════════════
+
   async trainModel() {
-    this.logger.log('Fetching OBE training data...');
+    this.logger.log('Fetching OBE training data…');
 
     const gradeRows = await this.finalGradeRepo
       .createQueryBuilder('fg')
@@ -58,10 +56,11 @@ export class PredictionService {
     const coFeatureMap  = await this._computeCoFeatures(masterlistIds);
     const below60Map    = await this._getActivitiesBelow60Map(masterlistIds);
 
+    // Pass final_numerical_grade so Python's _label_from_obe() derives
+    // the correct risk label from the actual grade — no override needed.
     const trainingData = gradeRows.map((row) => {
       const mlId   = Number(row.masterlist_id);
-      const coData = coFeatureMap[mlId] || this._emptyCoFeatures();
-
+      const coData = coFeatureMap[mlId] ?? this._emptyCoFeatures();
       return {
         studid:                  String(row.studid),
         total_weighted_percent:  parseFloat(row.final_weighted_score) || 0,
@@ -77,6 +76,7 @@ export class PredictionService {
       };
     });
 
+    this.logger.log(`Sending ${trainingData.length} samples to Python /train`);
     try {
       const res = await firstValueFrom(
         this.httpService.post(`${PYTHON_API}/train`, trainingData),
@@ -85,22 +85,21 @@ export class PredictionService {
     } catch (err) {
       this.logger.error('Python /train failed', err?.message);
       throw new InternalServerErrorException(
-        'Failed to train model. Is the Python API running on port 5000?',
+        'Failed to train model. Is the Python API running?',
       );
     }
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // PREDICT SINGLE STUDENT
+  //  PREDICT — single student
   // ══════════════════════════════════════════════════════════════════
+
   async predictRisk(masterlistId: number) {
     const gradeRow = await this.finalGradeRepo
       .createQueryBuilder('fg')
       .innerJoin('fg.student', 'ml')
       .select([
         'ml.studid                AS studid',
-        'ml.studlastname          AS studlastname',
-        'ml.studfirstname         AS studfirstname',
         'fg.final_weighted_score  AS final_weighted_score',
         'fg.final_numerical_grade AS final_numerical_grade',
         'fg.remarks               AS remarks',
@@ -110,28 +109,25 @@ export class PredictionService {
 
     const mlId = Number(masterlistId);
     let twp = 0;
-    let finalGrade = null;
-    let remarks = null;
+    let finalGrade: string | null = null;
+    let remarks: string | null    = null;
 
     if (gradeRow) {
       twp        = parseFloat(gradeRow.final_weighted_score) || 0;
       finalGrade = gradeRow.final_numerical_grade;
       remarks    = gradeRow.remarks;
     } else {
-      const partial = await this._computePartialWeightedPercent([mlId]);
-      twp = partial[mlId] ?? 0;
+      const partialMap = await this._computePartialWeightedPercent([mlId]);
+      twp = partialMap[mlId] ?? 0;
 
-      const hasAnyScore = await this.rawScoreRepo
+      const hasScore = await this.rawScoreRepo
         .createQueryBuilder('rs')
         .where('rs.masterlist_id = :id', { id: mlId })
         .getCount();
-
-      if (!hasAnyScore) {
-        return { error: 'No grade data found for this student.' };
-      }
+      if (!hasScore) return { error: 'No grade data found for this student.' };
     }
 
-    const coData  = (await this._computeCoFeatures([mlId]))[mlId] || this._emptyCoFeatures();
+    const coData = (await this._computeCoFeatures([mlId]))[mlId] ?? this._emptyCoFeatures();
     const below60 = (await this._getActivitiesBelow60Map([mlId]))[mlId] ?? 0;
 
     if (!coData.avg_co_score && !coData.weak_cos.length && twp === 0) {
@@ -154,7 +150,7 @@ export class PredictionService {
     };
 
     try {
-      const res = await firstValueFrom(
+      const res  = await firstValueFrom(
         this.httpService.post(`${PYTHON_API}/predict`, payload),
       );
       const pred = Array.isArray(res.data) ? res.data[0] : res.data;
@@ -168,32 +164,17 @@ export class PredictionService {
       };
     } catch {
       return this._fallback(
-        gradeRow?.studid ?? mlId,
-        twp, finalGrade, remarks,
-        coData.weak_cos,
+        gradeRow?.studid ?? mlId, twp, finalGrade, remarks, coData.weak_cos,
         { is_partial: !gradeRow },
       );
     }
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // BATCH PREDICT — all students in a class
-  //
-  // Does NOT require final grades to exist.
-  // Uses final grade when available, falls back to partial raw scores.
-  // Passes is_partial + cos_with_data + total_cos to Python so the
-  // model can scale its confidence based on how much data is available.
-  //
-  //   Example: syllabus has 4 COs, only CO1 has scores entered.
-  //     cos_with_data = 1, total_cos = 4 → confidence = 0.25
-  //     Model blends prediction 25% toward Warning centre.
-  //     Student with 65% on CO1 shows Warning, not Critical.
-  //
-  // Students with zero raw scores are skipped entirely.
+  //  PREDICT — batch (entire class)
   // ══════════════════════════════════════════════════════════════════
-  async predictBatch(subjcode: string, section: string, sy: string, sem: string) {
 
-    // ── Step 1: Get ALL students in this class ──────────────────
+  async predictBatch(subjcode: string, section: string, sy: string, sem: string) {
     const allStudents = await this.masterlistRepo
       .createQueryBuilder('ml')
       .select([
@@ -204,8 +185,8 @@ export class PredictionService {
       ])
       .where('ml.subjcode = :subjcode', { subjcode })
       .andWhere('ml.section = :section', { section })
-      .andWhere('ml.sy      = :sy',      { sy })
-      .andWhere('ml.sem     = :sem',     { sem })
+      .andWhere('ml.sy      = :sy', { sy })
+      .andWhere('ml.sem     = :sem', { sem })
       .getRawMany();
 
     if (!allStudents.length) {
@@ -214,7 +195,6 @@ export class PredictionService {
 
     const masterlistIds = allStudents.map((s) => Number(s.masterlist_id));
 
-    // ── Step 2: Get final grades for students who have them ─────
     const finalGradeRows = await this.finalGradeRepo
       .createQueryBuilder('fg')
       .innerJoin('fg.student', 'ml')
@@ -230,16 +210,13 @@ export class PredictionService {
       .getRawMany();
 
     const finalGradeMap: Record<number, any> = {};
-    finalGradeRows.forEach((r) => {
-      finalGradeMap[Number(r.masterlist_id)] = r;
-    });
+    finalGradeRows.forEach((r) => { finalGradeMap[Number(r.masterlist_id)] = r; });
 
-    // ── Step 3: Partial weighted percent for all students ───────
     const partialTwpMap = await this._computePartialWeightedPercent(
       masterlistIds, subjcode, section, sy, sem,
     );
 
-    // ── Step 4: Find students who have at least one raw score ───
+    // Only predict for students with at least one raw score
     const rawScoreCountRows = await this.rawScoreRepo
       .createQueryBuilder('rs')
       .innerJoin('rs.activity', 'act')
@@ -253,7 +230,7 @@ export class PredictionService {
       .groupBy('rs.masterlist_id')
       .getRawMany();
 
-    const studentsWithScores = new Set<number>(
+    const studentsWithScores = new Set(
       rawScoreCountRows
         .filter((r) => parseInt(r.score_count, 10) > 0)
         .map((r) => Number(r.masterlist_id)),
@@ -265,20 +242,14 @@ export class PredictionService {
 
     if (!eligibleStudents.length) {
       return {
-        error: 'No scores entered yet. Enter at least one assessment score in the Grading Module to enable predictions.',
+        error: 'No scores entered yet. Enter at least one assessment score in the Grading Module.',
       };
     }
 
-    const eligibleIds = eligibleStudents.map((s) => Number(s.masterlist_id));
-
-    // ── Step 5: CO features and below-60 map ────────────────────
+    const eligibleIds  = eligibleStudents.map((s) => Number(s.masterlist_id));
     const coFeatureMap = await this._computeCoFeatures(eligibleIds);
     const below60Map   = await this._getActivitiesBelow60Map(eligibleIds);
 
-    // ── Step 6: Total syllabus CO count for this class ──────────
-    // Needed to calculate the confidence ratio: cos_with_data / total_cos
-    // We query course_outcomes directly (not raw_score) so we get the
-    // full syllabus count regardless of how many have been assessed.
     let totalSyllabusCos = 0;
     try {
       const coCountRow = await this.rawScoreRepo.manager
@@ -289,23 +260,16 @@ export class PredictionService {
         .andWhere('co.section = :section', { section })
         .getRawOne();
       totalSyllabusCos = parseInt(coCountRow?.total ?? '0', 10) || 0;
-    } catch {
-      // If query fails (e.g. entity name mismatch), fall back gracefully
-      totalSyllabusCos = 0;
-    }
+    } catch { totalSyllabusCos = 0; }
 
-    // ── Step 7: Build payloads ───────────────────────────────────
     const payloads = eligibleStudents.map((student) => {
-      const mlId   = Number(student.masterlist_id);
-      const coData = coFeatureMap[mlId] || this._emptyCoFeatures();
-      const fg     = finalGradeMap[mlId];
-
-      const twp = fg
+      const mlId    = Number(student.masterlist_id);
+      const coData  = coFeatureMap[mlId] ?? this._emptyCoFeatures();
+      const fg      = finalGradeMap[mlId];
+      const twp     = fg
         ? parseFloat(fg.final_weighted_score) || 0
-        : partialTwpMap[mlId] ?? 0;
-
+        : (partialTwpMap[mlId] ?? 0);
       const cosWithData = coData._total_cos ?? 0;
-      const totalCos    = totalSyllabusCos > 0 ? totalSyllabusCos : cosWithData;
 
       return {
         studid:                  String(student.studid),
@@ -321,20 +285,17 @@ export class PredictionService {
         weak_co_details:         coData.weak_co_details,
         current_grade:           fg?.final_numerical_grade ?? null,
         remarks:                 fg?.remarks ?? null,
-        // ── Partial data confidence hints for model.py ────────────
         is_partial:              !fg,
         cos_with_data:           cosWithData,
-        total_cos:               totalCos,
+        total_cos:               totalSyllabusCos > 0 ? totalSyllabusCos : cosWithData,
       };
     });
 
-    // ── Step 8: Send to Python or use fallback ───────────────────
     try {
       const res = await firstValueFrom(
         this.httpService.post(`${PYTHON_API}/predict/batch`, payloads),
       );
       const predictions: any[] = Array.isArray(res.data) ? res.data : [res.data];
-
       return predictions.map((pred, idx) => ({
         ...pred,
         masterlist_id:          payloads[idx]?.masterlist_id,
@@ -348,44 +309,39 @@ export class PredictionService {
         is_partial:             payloads[idx]?.is_partial,
       }));
     } catch (err) {
-      this.logger.warn('Python batch failed — rule-based fallback');
+      this.logger.warn('Python batch predict failed — using fallback');
       return payloads.map((p) =>
-        this._fallback(
-          p.studid, p.total_weighted_percent,
-          p.current_grade, p.remarks, p.weak_cos,
-          {
-            masterlist_id:          p.masterlist_id,
-            student_name:           p.student_name,
-            total_weighted_percent: p.total_weighted_percent,
-            co_pass_rate:           p.co_pass_rate,
-            is_partial:             p.is_partial,
-          },
-        ),
+        this._fallback(p.studid, p.total_weighted_percent, p.current_grade, p.remarks, p.weak_cos, {
+          masterlist_id:          p.masterlist_id,
+          student_name:           p.student_name,
+          total_weighted_percent: p.total_weighted_percent,
+          co_pass_rate:           p.co_pass_rate,
+          is_partial:             p.is_partial,
+        }),
       );
     }
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // CO ATTAINMENT HEATMAP
+  //  CO HEATMAP
   // ══════════════════════════════════════════════════════════════════
+
   async getCoHeatmap(subjcode: string, section: string, sy: string, sem: string) {
     const students = await this.masterlistRepo
       .createQueryBuilder('ml')
       .select([
-        'ml.masterlist_id  AS masterlist_id',
+        'ml.masterlist_id AS masterlist_id',
         'ml.studid         AS studid',
         'ml.studlastname   AS studlastname',
         'ml.studfirstname  AS studfirstname',
       ])
       .where('ml.subjcode = :subjcode', { subjcode })
       .andWhere('ml.section = :section', { section })
-      .andWhere('ml.sy      = :sy',      { sy })
-      .andWhere('ml.sem     = :sem',     { sem })
+      .andWhere('ml.sy      = :sy', { sy })
+      .andWhere('ml.sem     = :sem', { sem })
       .getRawMany();
 
-    if (!students.length) {
-      return { error: 'No students found for this class.' };
-    }
+    if (!students.length) return { error: 'No students found for this class.' };
 
     const masterlistIds = students.map((s) => Number(s.masterlist_id));
 
@@ -393,24 +349,20 @@ export class PredictionService {
       .createQueryBuilder('rs')
       .innerJoin('rs.activity', 'act')
       .innerJoin('act.courseOutcome', 'co')
-      .select('rs.masterlist_id',   'masterlist_id')
-      .addSelect('co.co_code',      'co_code')
-      .addSelect(
-        '(SUM(rs.score) * 1.0 / NULLIF(SUM(act.max_score), 0)) * 100',
-        'co_pct',
-      )
+      .select('rs.masterlist_id', 'masterlist_id')
+      .addSelect('co.co_code', 'co_code')
+      .addSelect('(SUM(rs.score) * 1.0 / NULLIF(SUM(act.max_score), 0)) * 100', 'co_pct')
       .where('rs.masterlist_id IN (:...ids)', { ids: masterlistIds })
       .andWhere('act.co_id IS NOT NULL')
       .andWhere('act.subjcode = :subjcode', { subjcode })
       .andWhere('act.section  = :section',  { section })
       .andWhere('act.sy       = :sy',       { sy })
       .andWhere('act.sem      = :sem',      { sem })
-      .groupBy('rs.masterlist_id')
-      .addGroupBy('co.co_code')
+      .groupBy('rs.masterlist_id').addGroupBy('co.co_code')
       .getRawMany();
 
     if (!coRows.length) {
-      return { error: 'No CO score data available yet. Enter at least one assessment score first.' };
+      return { error: 'No CO score data available yet.' };
     }
 
     const coMap: Record<number, Record<string, number>> = {};
@@ -418,16 +370,13 @@ export class PredictionService {
       const mlId = Number(r.masterlist_id);
       if (!coMap[mlId]) coMap[mlId] = {};
       const pct = parseFloat(r.co_pct);
-      coMap[mlId][r.co_code] = !isNaN(pct) ? Math.round(pct * 10) / 10 : 0;
+      coMap[mlId][r.co_code] = isNaN(pct) ? 0 : Math.round(pct * 10) / 10;
     });
 
-    const studentsWithData = students.filter((s) =>
-      coMap[Number(s.masterlist_id)] && Object.keys(coMap[Number(s.masterlist_id)]).length > 0,
+    const studentsWithData = students.filter(
+      (s) => Object.keys(coMap[Number(s.masterlist_id)] ?? {}).length > 0,
     );
-
-    if (!studentsWithData.length) {
-      return { error: 'No CO score data available yet. Enter at least one assessment score first.' };
-    }
+    if (!studentsWithData.length) return { error: 'No CO score data available yet.' };
 
     const payload = studentsWithData.map((s) => ({
       studid:       String(s.studid),
@@ -436,37 +385,34 @@ export class PredictionService {
     }));
 
     try {
-      const res = await firstValueFrom(
-        this.httpService.post(`${PYTHON_API}/heatmap`, payload),
-      );
+      const res = await firstValueFrom(this.httpService.post(`${PYTHON_API}/heatmap`, payload));
       return res.data;
     } catch (err) {
-      this.logger.error('Python /heatmap failed, using local fallback', err?.message);
+      this.logger.error('Python /heatmap failed', err?.message);
       return this._heatmapFallback(payload);
     }
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // STUDENT TRAJECTORY
+  //  TRAJECTORY
   // ══════════════════════════════════════════════════════════════════
+
   async getTrajectory(subjcode: string, section: string, sy: string, sem: string) {
     const students = await this.masterlistRepo
       .createQueryBuilder('ml')
       .select([
-        'ml.masterlist_id  AS masterlist_id',
+        'ml.masterlist_id AS masterlist_id',
         'ml.studid         AS studid',
         'ml.studlastname   AS studlastname',
         'ml.studfirstname  AS studfirstname',
       ])
       .where('ml.subjcode = :subjcode', { subjcode })
       .andWhere('ml.section = :section', { section })
-      .andWhere('ml.sy      = :sy',      { sy })
-      .andWhere('ml.sem     = :sem',     { sem })
+      .andWhere('ml.sy      = :sy', { sy })
+      .andWhere('ml.sem     = :sem', { sem })
       .getRawMany();
 
-    if (!students.length) {
-      return { error: 'No students found for this class.' };
-    }
+    if (!students.length) return { error: 'No students found for this class.' };
 
     const masterlistIds = students.map((s) => Number(s.masterlist_id));
 
@@ -475,15 +421,12 @@ export class PredictionService {
       .innerJoin('rs.activity', 'act')
       .leftJoin('act.courseOutcome', 'co')
       .leftJoin('act.assessmentType', 'atype')
-      .select('rs.masterlist_id',        'masterlist_id')
-      .addSelect('act.activity_id',      'activity_id')
-      .addSelect('act.activity_name',    'activity_name')
-      .addSelect('act.grading_type',     'grading_type')
-      .addSelect('act.category',         'category')
+      .select('rs.masterlist_id',                      'masterlist_id')
+      .addSelect('act.activity_id',                    'activity_id')
       .addSelect('COALESCE(atype.name, act.category)', 'type_name')
-      .addSelect('co.co_code',           'co_code')
-      .addSelect('rs.score',             'score')
-      .addSelect('act.max_score',        'max_score')
+      .addSelect('co.co_code',                         'co_code')
+      .addSelect('rs.score',                           'score')
+      .addSelect('act.max_score',                      'max_score')
       .where('rs.masterlist_id IN (:...ids)', { ids: masterlistIds })
       .andWhere('act.subjcode = :subjcode', { subjcode })
       .andWhere('act.section  = :section',  { section })
@@ -493,51 +436,34 @@ export class PredictionService {
       .addOrderBy('act.activity_id', 'ASC')
       .getRawMany();
 
-    if (!activityRows.length) {
-      return { error: 'No assessment scores found yet. Enter at least one score in the Grading Module.' };
-    }
+    if (!activityRows.length) return { error: 'No assessment scores found yet.' };
 
     const labelCounters: Record<string, number> = {};
-    const actIdToLabel: Record<number, string> = {};
+    const actIdToLabel:  Record<number, string>  = {};
     const seenActIds = new Set<number>();
-
     for (const r of activityRows) {
       const actId = Number(r.activity_id);
       if (seenActIds.has(actId)) continue;
       seenActIds.add(actId);
-      const typeName = r.type_name || r.category || 'Act';
-      if (!labelCounters[typeName]) labelCounters[typeName] = 0;
-      labelCounters[typeName]++;
-      actIdToLabel[actId] = `${typeName} ${labelCounters[typeName]}`;
+      const type = r.type_name || 'Act';
+      labelCounters[type] = (labelCounters[type] ?? 0) + 1;
+      actIdToLabel[actId] = `${type} ${labelCounters[type]}`;
     }
 
-    const actMap: Record<number, Array<{ label: string; co: string | null; pct: number | null }>> = {};
+    const actMap: Record<number, any[]> = {};
     for (const r of activityRows) {
-      const mlId  = Number(r.masterlist_id);
+      const mlId = Number(r.masterlist_id);
       const actId = Number(r.activity_id);
       if (!actMap[mlId]) actMap[mlId] = [];
-
-      const score    = parseFloat(r.score);
-      const maxScore = parseFloat(r.max_score);
-      let pct: number | null = null;
-      if (!isNaN(score) && !isNaN(maxScore) && maxScore > 0) {
-        pct = Math.round((score / maxScore) * 1000) / 10;
-      }
-
-      actMap[mlId].push({
-        label: actIdToLabel[actId] || `Activity ${actId}`,
-        co:    r.co_code || null,
-        pct,
-      });
+      const score = parseFloat(r.score), maxScore = parseFloat(r.max_score);
+      const pct   = (!isNaN(score) && !isNaN(maxScore) && maxScore > 0)
+        ? Math.round((score / maxScore) * 1000) / 10
+        : null;
+      actMap[mlId].push({ label: actIdToLabel[actId] ?? `Act ${actId}`, co: r.co_code ?? null, pct });
     }
 
-    const studentsWithData = students.filter((s) =>
-      actMap[Number(s.masterlist_id)] && actMap[Number(s.masterlist_id)].length > 0,
-    );
-
-    if (!studentsWithData.length) {
-      return { error: 'No assessment scores found yet. Enter at least one score in the Grading Module.' };
-    }
+    const studentsWithData = students.filter((s) => (actMap[Number(s.masterlist_id)]?.length ?? 0) > 0);
+    if (!studentsWithData.length) return { error: 'No assessment scores found yet.' };
 
     const payload = studentsWithData.map((s) => ({
       studid:       String(s.studid),
@@ -546,46 +472,35 @@ export class PredictionService {
     }));
 
     try {
-      const res = await firstValueFrom(
-        this.httpService.post(`${PYTHON_API}/trajectory`, payload),
-      );
+      const res = await firstValueFrom(this.httpService.post(`${PYTHON_API}/trajectory`, payload));
       return res.data;
     } catch (err) {
-      this.logger.error('Python /trajectory failed, using local fallback', err?.message);
+      this.logger.error('Python /trajectory failed', err?.message);
       return this._trajectoryFallback(payload);
     }
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // HELPER: Partial weighted percent from raw scores only
+  //  PRIVATE HELPERS
   // ══════════════════════════════════════════════════════════════════
+
   private async _computePartialWeightedPercent(
     masterlistIds: number[],
-    subjcode?: string,
-    section?: string,
-    sy?: string,
-    sem?: string,
+    subjcode?: string, section?: string, sy?: string, sem?: string,
   ): Promise<Record<number, number>> {
     if (!masterlistIds.length) return {};
-
     let qb = this.rawScoreRepo
       .createQueryBuilder('rs')
       .innerJoin('rs.activity', 'act')
       .select('rs.masterlist_id', 'masterlist_id')
-      .addSelect(
-        '(SUM(rs.score)::float / NULLIF(SUM(act.max_score), 0)) * 100',
-        'partial_pct',
-      )
+      .addSelect('(SUM(rs.score)::float / NULLIF(SUM(act.max_score), 0)) * 100', 'partial_pct')
       .where('rs.masterlist_id IN (:...ids)', { ids: masterlistIds })
       .andWhere('act.max_score > 0');
-
     if (subjcode) qb = qb.andWhere('act.subjcode = :subjcode', { subjcode });
     if (section)  qb = qb.andWhere('act.section  = :section',  { section });
     if (sy)       qb = qb.andWhere('act.sy       = :sy',       { sy });
     if (sem)      qb = qb.andWhere('act.sem      = :sem',      { sem });
-
     const rows = await qb.groupBy('rs.masterlist_id').getRawMany();
-
     const map: Record<number, number> = {};
     rows.forEach((r) => {
       const pct = parseFloat(r.partial_pct);
@@ -594,38 +509,20 @@ export class PredictionService {
     return map;
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  // HELPER: CO-level features per student
-  //
-  // IMPORTANT: Only COs that have actual raw score entries are included.
-  // COs with no scores are completely ignored — they do NOT count as
-  // failed. This prevents penalising students for assessments not yet
-  // held.
-  //
-  // _total_cos = count of COs with score data (not total syllabus COs).
-  // Used by predictBatch to calculate the confidence ratio.
-  // ══════════════════════════════════════════════════════════════════
-  private async _computeCoFeatures(masterlistIds: number[]) {
+  private async _computeCoFeatures(masterlistIds: number[]): Promise<Record<number, any>> {
     if (!masterlistIds.length) return {};
 
     const coRows = await this.rawScoreRepo
       .createQueryBuilder('rs')
       .innerJoin('rs.activity', 'act')
       .innerJoin('act.courseOutcome', 'co')
-      .select('rs.masterlist_id',  'masterlist_id')
-      .addSelect('co.co_id',       'co_id')
-      .addSelect('co.co_code',     'co_code')
-      .addSelect('SUM(rs.score)',   'sum_score')
-      .addSelect('SUM(act.max_score)', 'sum_max')
-      .addSelect(
-        '(SUM(rs.score)::float / NULLIF(SUM(act.max_score), 0)) * 100',
-        'co_pct',
-      )
+      .select('rs.masterlist_id', 'masterlist_id')
+      .addSelect('co.co_id',      'co_id')
+      .addSelect('co.co_code',    'co_code')
+      .addSelect('(SUM(rs.score)::float / NULLIF(SUM(act.max_score), 0)) * 100', 'co_pct')
       .where('rs.masterlist_id IN (:...ids)', { ids: masterlistIds })
       .andWhere('act.co_id IS NOT NULL')
-      .groupBy('rs.masterlist_id')
-      .addGroupBy('co.co_id')
-      .addGroupBy('co.co_code')
+      .groupBy('rs.masterlist_id').addGroupBy('co.co_id').addGroupBy('co.co_code')
       .getRawMany();
 
     const coTypeRows = await this.rawScoreRepo
@@ -633,25 +530,17 @@ export class PredictionService {
       .innerJoin('rs.activity', 'act')
       .innerJoin('act.courseOutcome', 'co')
       .leftJoin('act.assessmentType', 'atype')
-      .select('rs.masterlist_id',  'masterlist_id')
-      .addSelect('co.co_code',     'co_code')
+      .select('rs.masterlist_id', 'masterlist_id')
+      .addSelect('co.co_code',    'co_code')
       .addSelect('COALESCE(atype.name, act.category, act.activity_name)', 'assess_name')
-      .addSelect('SUM(rs.score)',   'sum_score')
-      .addSelect('SUM(act.max_score)', 'sum_max')
-      .addSelect(
-        '(SUM(rs.score)::float / NULLIF(SUM(act.max_score), 0)) * 100',
-        'type_pct',
-      )
+      .addSelect('(SUM(rs.score)::float / NULLIF(SUM(act.max_score), 0)) * 100', 'type_pct')
       .where('rs.masterlist_id IN (:...ids)', { ids: masterlistIds })
       .andWhere('act.co_id IS NOT NULL')
-      .groupBy('rs.masterlist_id')
-      .addGroupBy('co.co_code')
-      .addGroupBy('atype.name')
-      .addGroupBy('act.category')
-      .addGroupBy('act.activity_name')
+      .groupBy('rs.masterlist_id').addGroupBy('co.co_code')
+      .addGroupBy('atype.name').addGroupBy('act.category').addGroupBy('act.activity_name')
       .getRawMany();
 
-    const grouped: Record<number, Array<{ co_code: string; co_pct: number }>> = {};
+    const grouped: Record<number, { co_code: string; co_pct: number }[]> = {};
     coRows.forEach((r) => {
       const mlId = Number(r.masterlist_id);
       if (!grouped[mlId]) grouped[mlId] = [];
@@ -659,51 +548,39 @@ export class PredictionService {
     });
 
     const typeGrouped: Record<number, Record<string, string[]>> = {};
-    const TYPE_THRESHOLD = 60;
     coTypeRows.forEach((r) => {
       const mlId = Number(r.masterlist_id);
-      const pct  = parseFloat(r.type_pct) || 0;
-      if (pct >= TYPE_THRESHOLD) return;
+      if ((parseFloat(r.type_pct) || 0) >= 60) return;
       if (!typeGrouped[mlId]) typeGrouped[mlId] = {};
       if (!typeGrouped[mlId][r.co_code]) typeGrouped[mlId][r.co_code] = [];
       const name = r.assess_name || 'Unknown';
-      if (!typeGrouped[mlId][r.co_code].includes(name)) {
+      if (!typeGrouped[mlId][r.co_code].includes(name))
         typeGrouped[mlId][r.co_code].push(name);
-      }
     });
 
-    const CO_PASS_THRESHOLD = 60;
-    const result: Record<number, ReturnType<typeof this._emptyCoFeatures>> = {};
-
+    const result: Record<number, any> = {};
     for (const mlId of masterlistIds) {
       const cos = grouped[mlId] || [];
       if (!cos.length) { result[mlId] = this._emptyCoFeatures(); continue; }
-
       const scores = cos.map((c) => c.co_pct);
-      const failed  = cos.filter((c) => c.co_pct < CO_PASS_THRESHOLD);
-      const passed  = cos.length - failed.length;
-
+      const failed = cos.filter((c) => c.co_pct < 60);
       const weakCoDetails: Record<string, string[]> = {};
-      failed.forEach((c) => {
-        weakCoDetails[c.co_code] = (typeGrouped[mlId]?.[c.co_code]) || [];
-      });
-
+      failed.forEach((c) => { weakCoDetails[c.co_code] = typeGrouped[mlId]?.[c.co_code] || []; });
       result[mlId] = {
-        co_pass_rate:    passed / cos.length,
+        co_pass_rate:    (cos.length - failed.length) / cos.length,
         num_cos_failed:  failed.length,
         min_co_score:    Math.min(...scores),
         avg_co_score:    scores.reduce((a, b) => a + b, 0) / scores.length,
         weak_cos:        failed.map((c) => c.co_code),
         weak_co_details: weakCoDetails,
-        _total_cos:      cos.length,   // COs that have score data
+        _total_cos:      cos.length,
       };
     }
     return result;
   }
 
-  private async _getActivitiesBelow60Map(masterlistIds: number[]) {
-    if (!masterlistIds.length) return {} as Record<number, number>;
-
+  private async _getActivitiesBelow60Map(masterlistIds: number[]): Promise<Record<number, number>> {
+    if (!masterlistIds.length) return {};
     const rows = await this.rawScoreRepo
       .createQueryBuilder('rs')
       .innerJoin('rs.activity', 'act')
@@ -715,174 +592,91 @@ export class PredictionService {
       .where('rs.masterlist_id IN (:...ids)', { ids: masterlistIds })
       .groupBy('rs.masterlist_id')
       .getRawMany();
-
     const map: Record<number, number> = {};
-    rows.forEach((r) => {
-      map[Number(r.masterlist_id)] = parseInt(r.below_count, 10) || 0;
-    });
+    rows.forEach((r) => { map[Number(r.masterlist_id)] = parseInt(r.below_count, 10) || 0; });
     return map;
   }
 
   private _emptyCoFeatures() {
     return {
-      co_pass_rate:    0,
-      num_cos_failed:  0,
-      min_co_score:    0,
-      avg_co_score:    0,
-      weak_cos:        [] as string[],
-      weak_co_details: {} as Record<string, string[]>,
-      _total_cos:      0,
+      co_pass_rate: 0, num_cos_failed: 0, min_co_score: 0,
+      avg_co_score: 0, weak_cos: [], weak_co_details: {}, _total_cos: 0,
     };
   }
 
   private _fallback(
-    studid: any,
-    twp: number,
-    grade: any,
-    remarks: any,
-    weakCos: string[],
-    extra: any = {},
+    studid: any, twp: number, grade: any, remarks: any,
+    weakCos: string[], extra: Record<string, any> = {},
   ) {
-    let risk_level = 'Safe';
-    let risk_score = 0;
-    if (twp < 60)      { risk_level = 'Critical'; risk_score = 2; }
-    else if (twp < 75) { risk_level = 'Warning';  risk_score = 1; }
-
+    const risk_score =  twp < 60 ? 2 : twp < 75 ? 1 : 0;
+    const risk_level = ['Safe', 'Warning', 'Critical'][risk_score];
     return {
-      studid:           String(studid),
-      risk_level,
-      risk_score,
-      fail_probability: risk_score === 2 ? 85 : risk_score === 1 ? 45 : 10,
-      prob_safe:        risk_score === 0 ? 80 : 15,
-      prob_warning:     risk_score === 1 ? 45 : 15,
-      prob_critical:    risk_score === 2 ? 80 : 5,
-      current_grade:    grade,
-      remarks,
-      weak_cos:         weakCos,
-      weak_co_details:  {},
-      source:           'fallback',
-      ...extra,
+      studid: String(studid), risk_level, risk_score,
+      fail_probability: [10, 45, 85][risk_score],
+      prob_safe:        [80, 15, 15][risk_score],
+      prob_warning:     [15, 45, 15][risk_score],
+      prob_critical:    [ 5,  5, 80][risk_score],
+      current_grade: grade, remarks, weak_cos: weakCos,
+      weak_co_details: {}, source: 'fallback', ...extra,
     };
   }
 
-  // ── Heatmap local fallback ─────────────────────────────────────────
-  private _heatmapFallback(
-    payload: Array<{ studid: string; student_name: string; co_scores: Record<string, number> }>,
-  ) {
-    const PASS_THRESHOLD = 60;
+  private _heatmapFallback(payload: any[]) {
+    const PASS = 60;
     const coSet = new Set<string>();
-    for (const s of payload) {
-      for (const co of Object.keys(s.co_scores)) coSet.add(co);
-    }
+    for (const s of payload) for (const co of Object.keys(s.co_scores)) coSet.add(co);
     const cos = Array.from(coSet).sort();
     const coTotals: Record<string, number[]> = {};
-
     const studentsOut = payload.map((s) => {
       const scores = cos.map((co) => {
-        const val = s.co_scores[co];
-        const pct = val !== undefined ? Math.round(val * 10) / 10 : null;
-        if (pct !== null) {
-          if (!coTotals[co]) coTotals[co] = [];
-          coTotals[co].push(pct);
-        }
-        return {
-          co, pct,
-          status: pct !== null ? (pct >= PASS_THRESHOLD ? 'pass' : 'fail') : 'missing',
-        };
+        const pct = s.co_scores[co] !== undefined ? Math.round(s.co_scores[co] * 10) / 10 : null;
+        if (pct !== null) { if (!coTotals[co]) coTotals[co] = []; coTotals[co].push(pct); }
+        return { co, pct, status: pct !== null ? (pct >= PASS ? 'pass' : 'fail') : 'missing' };
       });
-      const validScores = scores.filter((s) => s.pct !== null);
-      const avg = validScores.length > 0
-        ? Math.round(validScores.reduce((sum, s) => sum + s.pct!, 0) / validScores.length * 10) / 10
-        : 0;
+      const valid = scores.filter((s) => s.pct !== null);
+      const avg = valid.length ? Math.round(valid.reduce((a, b) => a + (b.pct ?? 0), 0) / valid.length * 10) / 10 : 0;
       return { studid: s.studid, student_name: s.student_name, scores, avg_score: avg };
     });
-
     studentsOut.sort((a, b) => a.avg_score - b.avg_score);
-
-    const coSummary = cos.map((co) => {
+    const co_summary = cos.map((co) => {
       const vals = coTotals[co] || [];
-      const passCount = vals.filter((v) => v >= PASS_THRESHOLD).length;
-      return {
-        co,
-        class_avg:  vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null,
-        pass_count: passCount,
-        total:      vals.length,
-        pass_rate:  vals.length > 0 ? Math.round(passCount / vals.length * 1000) / 10 : 0,
-      };
+      const pass = vals.filter((v) => v >= PASS).length;
+      return { co, class_avg: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null, pass_count: pass, total: vals.length, pass_rate: vals.length ? Math.round(pass / vals.length * 1000) / 10 : 0 };
     });
-
-    return { cos, students: studentsOut, co_summary: coSummary };
+    return { cos, students: studentsOut, co_summary };
   }
 
-  // ── Trajectory local fallback ──────────────────────────────────────
-  private _trajectoryFallback(
-    payload: Array<{ studid: string; student_name: string; assessments: Array<{ label: string; co: string | null; pct: number | null }> }>,
-  ) {
-    const PASS_THRESHOLD = 60;
-    const allLabels: string[] = [];
-    const seenLabels = new Set<string>();
-    for (const student of payload) {
-      for (const a of student.assessments) {
-        if (a.label && !seenLabels.has(a.label)) {
-          allLabels.push(a.label);
-          seenLabels.add(a.label);
-        }
-      }
-    }
-
+  private _trajectoryFallback(payload: any[]) {
+    const PASS = 60;
+    const allLabels: string[] = []; const seenLabels = new Set<string>();
+    for (const s of payload) for (const a of s.assessments)
+      if (a.label && !seenLabels.has(a.label)) { allLabels.push(a.label); seenLabels.add(a.label); }
     const results = payload.map((student) => {
-      const labelMap: Record<string, { label: string; co: string | null; pct: number | null }> = {};
-      for (const a of student.assessments) { labelMap[a.label] = a; }
-
-      const points: Array<{ label: string; co: string | null; pct: number | null; running_avg: number; status: string }> = [];
-      let runningTotal = 0;
-      let runningCount = 0;
-
+      const labelMap: Record<string, any> = {};
+      for (const a of student.assessments) labelMap[a.label] = a;
+      const points: any[] = []; let total = 0, count = 0;
       for (const label of allLabels) {
         const a = labelMap[label];
-        if (a && a.pct !== null) {
-          runningTotal += a.pct;
-          runningCount++;
-          points.push({
-            label, co: a.co,
-            pct:         Math.round(a.pct * 10) / 10,
-            running_avg: Math.round((runningTotal / runningCount) * 10) / 10,
-            status:      a.pct >= PASS_THRESHOLD ? 'pass' : 'fail',
-          });
+        if (a?.pct !== null && a?.pct !== undefined) {
+          total += a.pct; count++;
+          points.push({ label, co: a.co, pct: Math.round(a.pct * 10) / 10, running_avg: Math.round(total / count * 10) / 10, status: a.pct >= PASS ? 'pass' : 'fail' });
         } else {
-          points.push({
-            label, co: null, pct: null,
-            running_avg: runningCount > 0 ? Math.round((runningTotal / runningCount) * 10) / 10 : 0,
-            status: 'missing',
-          });
+          points.push({ label, co: null, pct: null, running_avg: count > 0 ? Math.round(total / count * 10) / 10 : 0, status: 'missing' });
         }
       }
-
-      const pcts = points.filter((p) => p.pct !== null).map((p) => p.pct!);
+      const pcts = points.filter((p) => p.pct !== null).map((p) => p.pct);
       const mid  = Math.floor(pcts.length / 2);
       let trend  = 'stable';
       if (mid > 0 && pcts.length > mid) {
-        const firstAvg  = pcts.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
-        const secondAvg = pcts.slice(mid).reduce((a, b) => a + b, 0) / (pcts.length - mid);
-        const diff      = secondAvg - firstAvg;
+        const diff = pcts.slice(mid).reduce((a, b) => a + b, 0) / (pcts.length - mid)
+                   - pcts.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
         trend = diff > 5 ? 'improving' : diff < -5 ? 'declining' : 'stable';
       }
-
-      const lastThree = pcts.slice(-3);
-      return {
-        studid:       student.studid,
-        student_name: student.student_name,
-        points, trend,
-        latest_avg:  lastThree.length > 0 ? Math.round(lastThree.reduce((a, b) => a + b, 0) / lastThree.length * 10) / 10 : 0,
-        overall_avg: pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length * 10) / 10 : 0,
-      };
+      const last3 = pcts.slice(-3);
+      return { studid: student.studid, student_name: student.student_name, points, trend, latest_avg: last3.length ? Math.round(last3.reduce((a, b) => a + b, 0) / last3.length * 10) / 10 : 0, overall_avg: pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length * 10) / 10 : 0 };
     });
-
-    const trendOrder: Record<string, number> = { declining: 0, stable: 1, improving: 2 };
-    results.sort(
-      (a, b) => (trendOrder[a.trend] ?? 1) - (trendOrder[b.trend] ?? 1) || a.latest_avg - b.latest_avg,
-    );
-
+    const order: Record<string, number> = { declining: 0, stable: 1, improving: 2 };
+    results.sort((a, b) => (order[a.trend] ?? 1) - (order[b.trend] ?? 1) || a.latest_avg - b.latest_avg);
     return { labels: allLabels, students: results };
   }
 }

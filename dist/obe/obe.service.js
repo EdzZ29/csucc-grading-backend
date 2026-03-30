@@ -32,7 +32,16 @@ let ObeService = class ObeService {
         this.activityRepo = activityRepo;
         this.assessmentTypeRepo = assessmentTypeRepo;
     }
-    async findAllAssessmentTypes() {
+    async findAllAssessmentTypes(empid) {
+        if (empid) {
+            return this.assessmentTypeRepo.find({
+                where: [
+                    { empid: (0, typeorm_2.IsNull)() },
+                    { empid: empid }
+                ],
+                order: { name: 'ASC' }
+            });
+        }
         return this.assessmentTypeRepo.find({ order: { name: 'ASC' } });
     }
     async calculateStudentFinalGrade(masterlistId) {
@@ -89,7 +98,34 @@ let ObeService = class ObeService {
         return Array.from(uniqueMap.values());
     }
     async createAssessmentType(data) {
-        return this.assessmentTypeRepo.save(this.assessmentTypeRepo.create({ name: data.name, code: data.code.toUpperCase() }));
+        try {
+            const newType = this.assessmentTypeRepo.create({
+                name: data.name,
+                code: data.code.toUpperCase(),
+                empid: data.empid
+            });
+            return await this.assessmentTypeRepo.save(newType);
+        }
+        catch (error) {
+            console.error('[OBE] createAssessmentType Error:', error);
+            if (error.code === '23505' || String(error).includes('duplicate key')) {
+                console.log('[OBE] Attempting to reset sequence for assessment_types and retrying...');
+                try {
+                    await this.assessmentTypeRepo.query(`SELECT setval(pg_get_serial_sequence('assessment_types', 'type_id'), coalesce(max(type_id),0) + 1, false) FROM assessment_types;`);
+                    const retryType = this.assessmentTypeRepo.create({
+                        name: data.name,
+                        code: data.code.toUpperCase(),
+                        empid: data.empid
+                    });
+                    return await this.assessmentTypeRepo.save(retryType);
+                }
+                catch (retryErr) {
+                    console.error('[OBE] Retry also failed:', retryErr);
+                    throw retryErr;
+                }
+            }
+            throw error;
+        }
     }
     async saveBatchSyllabus(payload) {
         var _a;

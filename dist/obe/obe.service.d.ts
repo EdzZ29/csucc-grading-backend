@@ -13,7 +13,7 @@ export declare class ObeService {
     private activityRepo;
     private assessmentTypeRepo;
     constructor(coRepo: Repository<CourseOutcome>, tosRepo: Repository<TosWeight>, scoreRepo: Repository<RawScore>, gradeRepo: Repository<FinalGrade>, activityRepo: Repository<ClassActivity>, assessmentTypeRepo: Repository<AssessmentType>);
-    findAllAssessmentTypes(): Promise<AssessmentType[]>;
+    findAllAssessmentTypes(empid?: number): Promise<AssessmentType[]>;
     calculateStudentFinalGrade(masterlistId: number): Promise<FinalGrade>;
     createCourseOutcome(data: any): Promise<CourseOutcome[]>;
     saveTosWeights(weights: any[]): Promise<any[]>;

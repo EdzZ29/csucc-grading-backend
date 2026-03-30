@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, IsNull } from 'typeorm';
 import { CourseOutcome } from './course-outcome.entity';
 import { TosWeight } from './tos-weight.entity';
 import { RawScore } from './raw-score.entity';
@@ -21,7 +21,16 @@ export class ObeService {
     @InjectRepository(AssessmentType) private assessmentTypeRepo: Repository<AssessmentType>,
   ) {}
 
-  async findAllAssessmentTypes(): Promise<AssessmentType[]> {
+  async findAllAssessmentTypes(empid?: number): Promise<AssessmentType[]> {
+    if (empid) {
+      return this.assessmentTypeRepo.find({
+        where: [
+          { empid: IsNull() },
+          { empid: empid }
+        ],
+        order: { name: 'ASC' }
+      });
+    }
     return this.assessmentTypeRepo.find({ order: { name: 'ASC' } });
   }
 
@@ -95,9 +104,35 @@ export class ObeService {
   }
 
   async createAssessmentType(data: { name: string; code: string; empid: number }) {
-    return this.assessmentTypeRepo.save(
-      this.assessmentTypeRepo.create({ name: data.name, code: data.code.toUpperCase() }),
-    );
+    try {
+      const newType = this.assessmentTypeRepo.create({ 
+        name: data.name, 
+        code: data.code.toUpperCase(),
+        empid: data.empid
+      });
+      return await this.assessmentTypeRepo.save(newType);
+    } catch (error) {
+       console.error('[OBE] createAssessmentType Error:', error);
+       // Attempt to fix Postgres sequence out of sync if error implies pk violation
+       if (error.code === '23505' || String(error).includes('duplicate key')) {
+         console.log('[OBE] Attempting to reset sequence for assessment_types and retrying...');
+         try {
+           await this.assessmentTypeRepo.query(
+             `SELECT setval(pg_get_serial_sequence('assessment_types', 'type_id'), coalesce(max(type_id),0) + 1, false) FROM assessment_types;`
+           );
+           const retryType = this.assessmentTypeRepo.create({ 
+             name: data.name, 
+             code: data.code.toUpperCase(),
+             empid: data.empid
+           });
+           return await this.assessmentTypeRepo.save(retryType);
+         } catch (retryErr) {
+           console.error('[OBE] Retry also failed:', retryErr);
+           throw retryErr;
+         }
+       }
+       throw error;
+    }
   }
 
   async saveBatchSyllabus(payload: {

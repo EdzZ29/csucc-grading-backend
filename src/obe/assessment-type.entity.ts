@@ -10,4 +10,7 @@ export class AssessmentType {
 
   @Column({ type: 'varchar', length: 100 })
   name: string; // Quiz, Case Analysis
+
+  @Column({ type: 'int', nullable: true })
+  empid?: number;
 }

@@ -9,8 +9,9 @@ export class ObeController {
 
 
   @Get('assessment-types')
-  async getTypes() {
-    return await this.obeService.findAllAssessmentTypes();
+  async getTypes(@Req() req: any) {
+    const empid = req.query.empid || (req.user && req.user.empid);
+    return await this.obeService.findAllAssessmentTypes(empid);
   }
 
 @Post('course-outcome/batch')
