@@ -31,15 +31,30 @@ let ObeController = class ObeController {
         if (!empid) {
             throw new common_1.InternalServerErrorException('User identification failed — no empid in request body or auth token');
         }
+        if (!payload.subjcode || !payload.section) {
+            throw new common_1.InternalServerErrorException('Missing required fields: subjcode and section');
+        }
         try {
-            const result = await this.obeService.saveBatchSyllabus(Object.assign(Object.assign({}, payload), { empid }));
-            console.log('[OBE] batchSave SUCCESS');
+            console.log('[OBE] Starting saveBatchSyllabus...');
+            const result = await this.obeService.saveBatchSyllabus({
+                subjcode: payload.subjcode.trim(),
+                section: payload.section.trim(),
+                outcomes: payload.outcomes || [],
+                weights: payload.weights || [],
+                empid,
+                sy: payload.sy || '',
+                sem: payload.sem || '',
+            });
+            console.log('[OBE] batchSave SUCCESS, result:', result);
             return result;
         }
         catch (error) {
-            console.error('[OBE] batchSave FAILED:', error.message);
-            console.error('[OBE] Full error:', error);
-            throw new common_1.InternalServerErrorException(error.message || 'Failed to save syllabus');
+            console.error('[OBE] batchSave FAILED');
+            console.error('[OBE] Error message:', error.message);
+            console.error('[OBE] Error details:', error);
+            console.error('[OBE] Error stack:', error.stack);
+            const errorMessage = error.message || 'Failed to save syllabus';
+            throw new common_1.InternalServerErrorException(`[OBE Error] ${errorMessage}`);
         }
     }
     async addType(data) {

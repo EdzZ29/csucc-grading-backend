@@ -26,17 +26,32 @@ async batchSave(@Body() payload: any, @Req() req: any) {
     throw new InternalServerErrorException('User identification failed — no empid in request body or auth token');
   }
 
+  if (!payload.subjcode || !payload.section) {
+    throw new InternalServerErrorException('Missing required fields: subjcode and section');
+  }
+
   try {
+    console.log('[OBE] Starting saveBatchSyllabus...');
     const result = await this.obeService.saveBatchSyllabus({
-      ...payload,
-      empid
+      subjcode: payload.subjcode.trim(),
+      section: payload.section.trim(),
+      outcomes: payload.outcomes || [],
+      weights: payload.weights || [],
+      empid,
+      sy: payload.sy || '',
+      sem: payload.sem || '',
     });
-    console.log('[OBE] batchSave SUCCESS');
+    console.log('[OBE] batchSave SUCCESS, result:', result);
     return result;
   } catch (error) {
-    console.error('[OBE] batchSave FAILED:', error.message);
-    console.error('[OBE] Full error:', error);
-    throw new InternalServerErrorException(error.message || 'Failed to save syllabus');
+    console.error('[OBE] batchSave FAILED');
+    console.error('[OBE] Error message:', error.message);
+    console.error('[OBE] Error details:', error);
+    console.error('[OBE] Error stack:', error.stack);
+    
+    // Provide specific error message to frontend
+    const errorMessage = error.message || 'Failed to save syllabus';
+    throw new InternalServerErrorException(`[OBE Error] ${errorMessage}`);
   }
 }
 

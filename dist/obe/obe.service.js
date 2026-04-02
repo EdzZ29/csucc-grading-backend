@@ -130,17 +130,51 @@ let ObeService = class ObeService {
     async saveBatchSyllabus(payload) {
         var _a;
         const normalizedSection = (_a = payload.section) === null || _a === void 0 ? void 0 : _a.trim().replace(/\s+/g, ' ');
+        console.log('[OBE] saveBatchSyllabus: Starting cleanup for', payload.subjcode, normalizedSection);
         const existingCOs = await this.coRepo.find({
             where: { empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection },
-            select: ['co_id'],
         });
         const existingCoIds = existingCOs.map((co) => co.co_id);
-        if (existingCoIds.length > 0)
-            await this.tosRepo.delete({ co_id: (0, typeorm_2.In)(existingCoIds) });
-        if (existingCoIds.length > 0) {
-            await this.coRepo.manager.query(`UPDATE class_activity SET co_id = NULL WHERE co_id = ANY($1)`, [existingCoIds]);
+        console.log('[OBE] Found existing COs to be replaced:', existingCoIds);
+        const unassignedActivities = await this.activityRepo.find({
+            where: { subjcode: payload.subjcode, section: normalizedSection, co_id: null },
+        });
+        const unassignedActivityIds = unassignedActivities.map((a) => a.activity_id);
+        if (unassignedActivityIds.length > 0) {
+            console.log('[OBE] Found UNASSIGNED activities (NULL co_id):', unassignedActivityIds);
+            await this.scoreRepo.delete({ activity: { activity_id: (0, typeorm_2.In)(unassignedActivityIds) } });
+            console.log('[OBE] Deleted RawScores for UNASSIGNED activities');
+            await this.activityRepo.delete({ activity_id: (0, typeorm_2.In)(unassignedActivityIds) });
+            console.log('[OBE] Deleted UNASSIGNED activities');
         }
-        await this.coRepo.delete({ empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection });
+        if (existingCoIds.length > 0) {
+            const oldActivities = await this.activityRepo.find({
+                where: { co_id: (0, typeorm_2.In)(existingCoIds) },
+            });
+            const oldActivityIds = oldActivities.map((a) => a.activity_id);
+            console.log('[OBE] Found old activities to clean:', oldActivityIds);
+            let affectedMasterlistIds = [];
+            if (oldActivityIds.length > 0) {
+                const affectedScores = await this.scoreRepo.find({
+                    where: { activity: { activity_id: (0, typeorm_2.In)(oldActivityIds) } },
+                    select: ['masterlist_id'],
+                });
+                affectedMasterlistIds = Array.from(new Set(affectedScores.map((s) => s.masterlist_id).filter((id) => id != null)));
+                console.log('[OBE] Found affected students:', affectedMasterlistIds);
+                await this.scoreRepo.delete({ activity: { activity_id: (0, typeorm_2.In)(oldActivityIds) } });
+                console.log('[OBE] Deleted RawScores for old activities');
+            }
+            if (affectedMasterlistIds.length > 0) {
+                await this.gradeRepo.delete({ masterlist_id: (0, typeorm_2.In)(affectedMasterlistIds) });
+                console.log('[OBE] Deleted FinalGrades for affected students');
+            }
+            await this.activityRepo.delete({ co_id: (0, typeorm_2.In)(existingCoIds) });
+            console.log('[OBE] Deleted ClassActivity records linked to old COs');
+            await this.tosRepo.delete({ co_id: (0, typeorm_2.In)(existingCoIds) });
+            console.log('[OBE] Deleted TosWeights');
+            await this.coRepo.delete({ empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection });
+            console.log('[OBE] Deleted CourseOutcomes');
+        }
         const createdOutcomes = await Promise.all(payload.outcomes.map((co) => this.coRepo.save(this.coRepo.create({
             co_code: co.co_code, description: co.description,
             subjcode: payload.subjcode, section: normalizedSection,
@@ -166,6 +200,7 @@ let ObeService = class ObeService {
             co_id: outcomeMap[w.co_code], type_id: w.type_id,
             weight_percentage: w.weight_percentage,
         }));
+        console.log('[OBE] saveBatchSyllabus: Cleanup and recreation complete');
         return this.tosRepo.save(weightsToSave);
     }
 };
