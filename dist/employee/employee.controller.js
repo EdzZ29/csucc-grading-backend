@@ -16,8 +16,17 @@ let EmployeeController = class EmployeeController {
     constructor(employeeService) {
         this.employeeService = employeeService;
     }
+    async getAllEmployees() {
+        return this.employeeService.findAll();
+    }
 };
 exports.EmployeeController = EmployeeController;
+__decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], EmployeeController.prototype, "getAllEmployees", null);
 exports.EmployeeController = EmployeeController = __decorate([
     (0, common_1.Controller)('employee'),
     __metadata("design:paramtypes", [employee_service_1.EmployeeService])
