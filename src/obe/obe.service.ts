@@ -141,83 +141,111 @@ export class ObeService {
   }) {
     const normalizedSection = payload.section?.trim().replace(/\s+/g, ' ');
 
-    console.log('[OBE] saveBatchSyllabus: Starting cleanup for', payload.subjcode, normalizedSection);
+    console.log('[OBE] saveBatchSyllabus: Starting SMART MERGE for', payload.subjcode, normalizedSection);
 
-    // ── STEP 1: Find all existing Course Outcomes for this class ──
+    // ── STEP 1: Load existing Course Outcomes ──
     const existingCOs = await this.coRepo.find({
       where: { empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection },
     });
-    const existingCoIds = existingCOs.map((co) => co.co_id);
 
-    console.log('[OBE] Found existing COs to be replaced:', existingCoIds);
+    // Map old COs by co_code for quick lookup
+    const existingCoMap = new Map<string, any>();
+    existingCOs.forEach((co) => existingCoMap.set(co.co_code, co));
 
-    // ── STEP 2: Find and clean up UNASSIGNED activities (with NULL or missing co_id) ──
-    const unassignedActivities = await this.activityRepo.find({
-      where: { subjcode: payload.subjcode, section: normalizedSection, co_id: null },
+    console.log('[OBE] Existing COs:', Array.from(existingCoMap.keys()));
+    console.log('[OBE] New COs:', payload.outcomes.map((o) => o.co_code));
+
+    // ── STEP 2: Identify COs to delete, update, and create ──
+    const newCoCodes = new Set(payload.outcomes.map((o) => o.co_code));
+    const cosToDelte: string[] = [];
+    const cosToUpdate: { co_code: string; description: string }[] = [];
+    const cosToCreate: { co_code: string; description: string }[] = [];
+
+    // Find COs to delete (exist in DB but not in new payload)
+    existingCoMap.forEach((co, coCode) => {
+      if (!newCoCodes.has(coCode)) {
+        cosToDelte.push(coCode);
+      }
     });
-    const unassignedActivityIds = unassignedActivities.map((a) => a.activity_id);
-    
-    if (unassignedActivityIds.length > 0) {
-      console.log('[OBE] Found UNASSIGNED activities (NULL co_id):', unassignedActivityIds);
-      
-      // Delete RawScores for UNASSIGNED activities
-      await this.scoreRepo.delete({ activity: { activity_id: In(unassignedActivityIds) } });
-      console.log('[OBE] Deleted RawScores for UNASSIGNED activities');
-      
-      // Delete the UNASSIGNED activities
-      await this.activityRepo.delete({ activity_id: In(unassignedActivityIds) });
-      console.log('[OBE] Deleted UNASSIGNED activities');
-    }
 
-    // ── STEP 3: Delete ALL related data for OLD OUTCOMES before recreating ──
-    if (existingCoIds.length > 0) {
-      // Find activities linked to these COs
-      const oldActivities = await this.activityRepo.find({
-        where: { co_id: In(existingCoIds) },
-      });
-      const oldActivityIds = oldActivities.map((a) => a.activity_id);
+    // Find COs to update or create
+    payload.outcomes.forEach((newCo) => {
+      const existing = existingCoMap.get(newCo.co_code);
+      if (existing) {
+        cosToUpdate.push({ co_code: newCo.co_code, description: newCo.description });
+      } else {
+        cosToCreate.push({ co_code: newCo.co_code, description: newCo.description });
+      }
+    });
 
-      console.log('[OBE] Found old activities to clean:', oldActivityIds);
+    console.log('[OBE] COs to delete:', cosToDelte);
+    console.log('[OBE] COs to update:', cosToUpdate.map((c) => c.co_code));
+    console.log('[OBE] COs to create:', cosToCreate.map((c) => c.co_code));
 
-      // Delete RawScores for these activities (DEEP CLEANUP)
-      let affectedMasterlistIds: number[] = [];
-      if (oldActivityIds.length > 0) {
-        // Find all students affected by these activities
-        const affectedScores = await this.scoreRepo.find({
-          where: { activity: { activity_id: In(oldActivityIds) } },
-          select: ['masterlist_id'],
+    // ── STEP 3: Delete only the COs that were removed ──
+    if (cosToDelte.length > 0) {
+      const coIdsToDelete = cosToDelte
+        .map((coCode) => existingCoMap.get(coCode)?.co_id)
+        .filter((id): id is number => id != null);
+
+      if (coIdsToDelete.length > 0) {
+        // Find activities linked to deleted COs
+        const activitiesToDelete = await this.activityRepo.find({
+          where: { co_id: In(coIdsToDelete) },
         });
-        affectedMasterlistIds = Array.from(
-          new Set(affectedScores.map((s) => s.masterlist_id).filter((id) => id != null))
-        );
-        console.log('[OBE] Found affected students:', affectedMasterlistIds);
+        const activityIdsToDelete = activitiesToDelete.map((a) => a.activity_id);
 
-        await this.scoreRepo.delete({ activity: { activity_id: In(oldActivityIds) } });
-        console.log('[OBE] Deleted RawScores for old activities');
+        console.log('[OBE] Deleting activities for removed COs:', activityIdsToDelete);
+
+        if (activityIdsToDelete.length > 0) {
+          // Find affected students
+          const affectedScores = await this.scoreRepo.find({
+            where: { activity: { activity_id: In(activityIdsToDelete) } },
+            select: ['masterlist_id'],
+          });
+          const affectedMasterlistIds = Array.from(
+            new Set(affectedScores.map((s) => s.masterlist_id).filter((id) => id != null))
+          );
+
+          console.log('[OBE] Deleting scores for removed CO activities, affected students:', affectedMasterlistIds);
+
+          // Delete scores
+          await this.scoreRepo.delete({ activity: { activity_id: In(activityIdsToDelete) } });
+
+          // Delete activities
+          await this.activityRepo.delete({ activity_id: In(activityIdsToDelete) });
+
+          // Delete and recalculate final grades for affected students
+          if (affectedMasterlistIds.length > 0) {
+            await this.gradeRepo.delete({ masterlist_id: In(affectedMasterlistIds) });
+            console.log('[OBE] Deleted final grades for affected students');
+          }
+        }
+
+        // Delete TosWeights for removed COs
+        await this.tosRepo.delete({ co_id: In(coIdsToDelete) });
+
+        // Delete CourseOutcomes
+        await this.coRepo.delete({ co_id: In(coIdsToDelete) });
+        console.log('[OBE] Deleted removed CourseOutcomes');
       }
-
-      // Delete FinalGrades for affected students (BEFORE deleting activities)
-      if (affectedMasterlistIds.length > 0) {
-        await this.gradeRepo.delete({ masterlist_id: In(affectedMasterlistIds) });
-        console.log('[OBE] Deleted FinalGrades for affected students');
-      }
-
-      // Delete ClassActivity records linked to old COs (DEEP CLEANUP)
-      await this.activityRepo.delete({ co_id: In(existingCoIds) });
-      console.log('[OBE] Deleted ClassActivity records linked to old COs');
-
-      // Delete TosWeights (Assessment Weight Matrix)
-      await this.tosRepo.delete({ co_id: In(existingCoIds) });
-      console.log('[OBE] Deleted TosWeights');
-
-      // Delete CourseOutcomes
-      await this.coRepo.delete({ empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection });
-      console.log('[OBE] Deleted CourseOutcomes');
     }
 
-    // ── STEP 4: Create new Course Outcomes ──
+    // ── STEP 4: Update existing COs (in case description changed) ──
+    if (cosToUpdate.length > 0) {
+      for (const co of cosToUpdate) {
+        const existing = existingCoMap.get(co.co_code);
+        if (existing && existing.description !== co.description) {
+          existing.description = co.description;
+          await this.coRepo.save(existing);
+          console.log(`[OBE] Updated description for CO: ${co.co_code}`);
+        }
+      }
+    }
+
+    // ── STEP 5: Create new COs ──
     const createdOutcomes = await Promise.all(
-      payload.outcomes.map((co) =>
+      cosToCreate.map((co) =>
         this.coRepo.save(this.coRepo.create({
           co_code: co.co_code, description: co.description,
           subjcode: payload.subjcode, section: normalizedSection,
@@ -226,14 +254,43 @@ export class ObeService {
       ),
     );
 
-    const outcomeMap = createdOutcomes.reduce((acc, co) => {
-      acc[co.co_code] = co.co_id;
-      return acc;
-    }, {} as Record<string, number>);
+    console.log('[OBE] Created new COs:', createdOutcomes.map((c) => c.co_code));
 
-    // ── STEP 5: Validate and save new weights ──
+    // ── STEP 6: Build complete outcome map (existing + created) ──
+    const outcomeMap = new Map<string, number>();
+    existingCOs.forEach((co) => {
+      if (!cosToDelte.includes(co.co_code)) {
+        outcomeMap.set(co.co_code, co.co_id);
+      }
+    });
+    createdOutcomes.forEach((co) => {
+      outcomeMap.set(co.co_code, co.co_id);
+    });
+
+    // ── STEP 7: Smart weight update (only delete old weights, then insert new ones) ──
+    // Load existing weights for this class
+    const existingWeights = await this.tosRepo.find({
+      where: {
+        empid: payload.empid,
+        subjcode: payload.subjcode,
+        section: normalizedSection,
+      },
+    });
+
+    // Find weights to delete (for removed COs or changed CO-Type combinations)
+    const coIdsToDelete = cosToDelte
+      .map((coCode) => existingCoMap.get(coCode)?.co_id)
+      .filter((id): id is number => id != null);
+
+    if (coIdsToDelete.length > 0) {
+      await this.tosRepo.delete({ co_id: In(coIdsToDelete) });
+      console.log('[OBE] Deleted weights for removed COs');
+    }
+
+    // Build new weight list from payload
     const validWeights = payload.weights.filter((w) => {
-      if (!outcomeMap[w.co_code]) {
+      const coId = outcomeMap.get(w.co_code);
+      if (!coId) {
         console.warn(`[OBE] Skipping orphan weight: co_code="${w.co_code}" has no matching outcome`);
         return false;
       }
@@ -245,14 +302,31 @@ export class ObeService {
       return [];
     }
 
-    // ── STEP 4: Create new TosWeights ──
+    // Delete ALL old weights (they will be recreated below)
+    const allCoIds = Array.from(outcomeMap.values());
+    if (allCoIds.length > 0) {
+      await this.tosRepo.delete({
+        empid: payload.empid,
+        subjcode: payload.subjcode,
+        section: normalizedSection,
+        co_id: In(allCoIds),
+      });
+      console.log('[OBE] Cleared old weights for existing COs (will be replaced with new weights)');
+    }
+
+    // ── STEP 8: Insert new weights ──
     const weightsToSave = validWeights.map((w) => ({
-      empid: payload.empid, subjcode: payload.subjcode, section: normalizedSection,
-      co_id: outcomeMap[w.co_code], type_id: w.type_id,
+      empid: payload.empid,
+      subjcode: payload.subjcode,
+      section: normalizedSection,
+      co_id: outcomeMap.get(w.co_code),
+      type_id: w.type_id,
       weight_percentage: w.weight_percentage,
     }));
 
-    console.log('[OBE] saveBatchSyllabus: Cleanup and recreation complete');
-    return this.tosRepo.save(weightsToSave);
+    const savedWeights = await this.tosRepo.save(weightsToSave);
+    console.log('[OBE] saveBatchSyllabus: SMART MERGE complete - preserved student scores where possible');
+    
+    return savedWeights;
   }
 }

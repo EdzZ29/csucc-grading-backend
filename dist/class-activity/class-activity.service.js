@@ -297,6 +297,7 @@ let ClassActivityService = ClassActivityService_1 = class ClassActivityService {
                 masterlist_id: student.masterlist_id,
                 studid: student.studid,
                 student_name: `${student.studlastname}, ${student.studfirstname}`,
+                course: student.course || 'N/A',
                 raw_scores: rawScores,
                 percent_ratings: percentRatings,
                 weighted_ratings: weightedRatings,

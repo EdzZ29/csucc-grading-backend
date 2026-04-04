@@ -58,6 +58,7 @@ export interface StudentGradeRow {
   masterlist_id: number;
   studid: string;
   student_name: string;
+  course: string;
   raw_scores: RawScoreCell[];
   percent_ratings: PercentRatingCell[];
   weighted_ratings: WeightedRatingCell[];
@@ -495,6 +496,7 @@ export class ClassActivityService {
         masterlist_id: student.masterlist_id,
         studid: student.studid,
         student_name: `${student.studlastname}, ${student.studfirstname}`,
+        course: student.course || 'N/A',
         raw_scores: rawScores,
         percent_ratings: percentRatings,
         weighted_ratings: weightedRatings,

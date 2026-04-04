@@ -40,6 +40,7 @@ export interface StudentGradeRow {
     masterlist_id: number;
     studid: string;
     student_name: string;
+    course: string;
     raw_scores: RawScoreCell[];
     percent_ratings: PercentRatingCell[];
     weighted_ratings: WeightedRatingCell[];
