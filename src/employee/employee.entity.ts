@@ -51,6 +51,9 @@ export class Employee {
   @Column({ type: 'boolean', default: true })
   isactive: boolean;
 
+  @Column({ type: 'boolean', default: false, name: 'is_blocked' })
+  is_blocked: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 

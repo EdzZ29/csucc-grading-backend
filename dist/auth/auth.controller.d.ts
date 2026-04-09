@@ -29,6 +29,21 @@ export declare class AuthController {
     deleteUser(userId: number): Promise<{
         message: string;
     }>;
+    updateUser(userId: number, updateData: any): Promise<{
+        message: string;
+    }>;
+    changePassword(userId: number, changePassData: any): Promise<{
+        message: string;
+    }>;
+    resetUserPassword(userId: number): Promise<{
+        message: string;
+    }>;
+    blockAccount(userId: number): Promise<{
+        message: string;
+    }>;
+    unblockAccount(userId: number): Promise<{
+        message: string;
+    }>;
     checkAuth(request: Request): Promise<{
         loggedIn: boolean;
         user: Employee;

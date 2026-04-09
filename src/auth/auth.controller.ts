@@ -47,6 +47,8 @@ export class AuthController {
 
     if (!user) throw new NotFoundException('User not found');
 
+    if (user.is_blocked) throw new BadRequestException('Your account has been blocked. Please contact the administrator.');
+
     const passwordValid = await bcrypt.compare(password, user.password);
     if (!passwordValid) throw new BadRequestException('Invalid credentials');
 
@@ -142,7 +144,7 @@ export class AuthController {
     }
 
     await this.employeeService.update(userId, updateData);
-    return this.employeeService.findOne({ employee_id: userId });
+    return this.employeeService.findOne({ empid: userId });
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -190,7 +192,7 @@ export class AuthController {
     @Body('password') password: string,
     @Body('password_confirm') password_confirm: string,
   ) {
-    const user = await this.employeeService.findOne({ employee_id: userId });
+    const user = await this.employeeService.findOne({ empid: userId });
     if (!user) throw new NotFoundException('User not found');
 
     if (password !== password_confirm) {
@@ -206,13 +208,93 @@ export class AuthController {
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(EmpRole.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(EmpRole.ADMIN)
   @Delete('auth/admin/delete-users/:id')
   async deleteUser(@Param('id') userId: number) {
-    const user = await this.employeeService.findOne({ employee_id: userId });
+    const user = await this.employeeService.findOne({ empid: userId });
     if (!user) throw new NotFoundException('User not found');
 
     await this.employeeService.delete(userId);
     return { message: 'User deleted successfully' };
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(EmpRole.ADMIN)
+  @Put('auth/admin/users/:id')
+  async updateUser(@Param('id') userId: number, @Body() updateData: any) {
+    const user = await this.employeeService.findOne({ empid: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const updatePayload = {
+      firstname: updateData.firstname,
+      middlename: updateData.middlename || '',
+      lastname: updateData.lastname,
+      extname: updateData.extname || '',
+      role: updateData.role,
+      email: updateData.email,
+    };
+
+    await this.employeeService.update(userId, updatePayload);
+    return { message: 'User updated successfully' };
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(EmpRole.ADMIN)
+  @Post('auth/admin/users/:id/change-password')
+  async changePassword(
+    @Param('id') userId: number,
+    @Body() changePassData: any,
+  ) {
+    const user = await this.employeeService.findOne({ empid: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Verify old password
+    const passwordValid = await bcrypt.compare(changePassData.oldPassword, user.password);
+    if (!passwordValid) throw new BadRequestException('Current password is incorrect');
+
+    // Hash and save new password
+    const hashedPassword = await bcrypt.hash(changePassData.newPassword, 12);
+    await this.employeeService.update(userId, { password: hashedPassword });
+
+    return { message: 'Password changed successfully' };
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(EmpRole.ADMIN)
+  @Post('auth/admin/users/:id/reset-password')
+  async resetUserPassword(@Param('id') userId: number) {
+    const user = await this.employeeService.findOne({ empid: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Reset to default password: "Password123"
+    const defaultPassword = 'Password123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+    await this.employeeService.update(userId, { password: hashedPassword });
+
+    return { message: 'Password reset to default successfully' };
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(EmpRole.ADMIN)
+  @Post('auth/admin/users/:id/block-account')
+  async blockAccount(@Param('id') userId: number) {
+    const user = await this.employeeService.findOne({ empid: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.employeeService.update(userId, { is_blocked: true });
+    return { message: 'Account blocked successfully' };
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(EmpRole.ADMIN)
+  @Post('auth/admin/users/:id/unblock-account')
+  async unblockAccount(@Param('id') userId: number) {
+    const user = await this.employeeService.findOne({ empid: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.employeeService.update(userId, { is_blocked: false });
+    return { message: 'Account unblocked successfully' };
   }
 
   @UseGuards(AuthGuard)
@@ -223,7 +305,7 @@ export class AuthController {
 
     return {
       loggedIn: true,
-      user: await this.employeeService.findOne({ employee_id: id }),
+      user: await this.employeeService.findOne({ empid: id }),
       role,
     };
   }

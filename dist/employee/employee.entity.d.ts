@@ -18,6 +18,7 @@ export declare class Employee {
     email: string;
     password: string;
     isactive: boolean;
+    is_blocked: boolean;
     created_at: Date;
     masterlists: Masterlist[];
     courseOutcomes: CourseOutcome[];

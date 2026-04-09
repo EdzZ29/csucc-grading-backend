@@ -66,6 +66,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Employee.prototype, "isactive", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'boolean', default: false, name: 'is_blocked' }),
+    __metadata("design:type", Boolean)
+], Employee.prototype, "is_blocked", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
 ], Employee.prototype, "created_at", void 0);

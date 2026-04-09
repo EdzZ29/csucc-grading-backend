@@ -33,6 +33,8 @@ let AuthController = class AuthController {
         const user = await this.employeeService.findOne({ email });
         if (!user)
             throw new common_1.NotFoundException('User not found');
+        if (user.is_blocked)
+            throw new common_1.BadRequestException('Your account has been blocked. Please contact the administrator.');
         const passwordValid = await bcrypt.compare(password, user.password);
         if (!passwordValid)
             throw new common_1.BadRequestException('Invalid credentials');
@@ -101,7 +103,7 @@ let AuthController = class AuthController {
             updateData.password = hashed;
         }
         await this.employeeService.update(userId, updateData);
-        return this.employeeService.findOne({ employee_id: userId });
+        return this.employeeService.findOne({ empid: userId });
     }
     async getAllUsers() {
         return this.employeeService.findAll();
@@ -121,7 +123,7 @@ let AuthController = class AuthController {
         return { message: 'Password updated successfully' };
     }
     async resetPassword(userId, password, password_confirm) {
-        const user = await this.employeeService.findOne({ employee_id: userId });
+        const user = await this.employeeService.findOne({ empid: userId });
         if (!user)
             throw new common_1.NotFoundException('User not found');
         if (password !== password_confirm) {
@@ -133,18 +135,67 @@ let AuthController = class AuthController {
         return { message: 'Password reset successfully' };
     }
     async deleteUser(userId) {
-        const user = await this.employeeService.findOne({ employee_id: userId });
+        const user = await this.employeeService.findOne({ empid: userId });
         if (!user)
             throw new common_1.NotFoundException('User not found');
         await this.employeeService.delete(userId);
         return { message: 'User deleted successfully' };
+    }
+    async updateUser(userId, updateData) {
+        const user = await this.employeeService.findOne({ empid: userId });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        const updatePayload = {
+            firstname: updateData.firstname,
+            middlename: updateData.middlename || '',
+            lastname: updateData.lastname,
+            extname: updateData.extname || '',
+            role: updateData.role,
+            email: updateData.email,
+        };
+        await this.employeeService.update(userId, updatePayload);
+        return { message: 'User updated successfully' };
+    }
+    async changePassword(userId, changePassData) {
+        const user = await this.employeeService.findOne({ empid: userId });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        const passwordValid = await bcrypt.compare(changePassData.oldPassword, user.password);
+        if (!passwordValid)
+            throw new common_1.BadRequestException('Current password is incorrect');
+        const hashedPassword = await bcrypt.hash(changePassData.newPassword, 12);
+        await this.employeeService.update(userId, { password: hashedPassword });
+        return { message: 'Password changed successfully' };
+    }
+    async resetUserPassword(userId) {
+        const user = await this.employeeService.findOne({ empid: userId });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        const defaultPassword = 'Password123';
+        const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+        await this.employeeService.update(userId, { password: hashedPassword });
+        return { message: 'Password reset to default successfully' };
+    }
+    async blockAccount(userId) {
+        const user = await this.employeeService.findOne({ empid: userId });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        await this.employeeService.update(userId, { is_blocked: true });
+        return { message: 'Account blocked successfully' };
+    }
+    async unblockAccount(userId) {
+        const user = await this.employeeService.findOne({ empid: userId });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        await this.employeeService.update(userId, { is_blocked: false });
+        return { message: 'Account unblocked successfully' };
     }
     async checkAuth(request) {
         const cookie = request.cookies['jwt'];
         const { id, role } = await this.jwtService.verifyAsync(cookie);
         return {
             loggedIn: true,
-            user: await this.employeeService.findOne({ employee_id: id }),
+            user: await this.employeeService.findOne({ empid: id }),
             role,
         };
     }
@@ -228,12 +279,61 @@ __decorate([
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
     (0, common_1.Delete)('auth/admin/delete-users/:id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "deleteUser", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
+    (0, common_1.Put)('auth/admin/users/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updateUser", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
+    (0, common_1.Post)('auth/admin/users/:id/change-password'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "changePassword", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
+    (0, common_1.Post)('auth/admin/users/:id/reset-password'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetUserPassword", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
+    (0, common_1.Post)('auth/admin/users/:id/block-account'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "blockAccount", null);
+__decorate([
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(employee_entity_1.EmpRole.ADMIN),
+    (0, common_1.Post)('auth/admin/users/:id/unblock-account'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "unblockAccount", null);
 __decorate([
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.Get)('auth/check'),
